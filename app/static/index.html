@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traffiqui Vision</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span>Traffiqui</span> Vision <small>MVP · 1 cámara</small></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-view="live" aria-selected="true">En vivo</button>
+      <button class="tab" role="tab" data-view="analytics" aria-selected="false">Analítica</button>
+      <button class="tab" role="tab" data-view="buyers" aria-selected="false">Compradores</button>
+      <button class="tab" role="tab" data-view="store" aria-selected="false">Tienda 3D</button>
+      <button class="tab" role="tab" data-view="plan" aria-selected="false">Plano</button>
+      <button class="tab" role="tab" data-view="settings" aria-selected="false">Configuración</button>
+    </nav>
+    <div class="status">
+      <span class="pill" id="pillCam">Cámara</span>
+      <span class="pill" id="pillServer">Servidor</span>
+      <span id="fpsTop">– FPS</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="alerts"></div>
+
+    <!-- ================= EN VIVO ================= -->
+    <section class="view" id="view-live">
+      <div class="live">
+        <div>
+          <div class="camsel" id="camSelBar" hidden>
+            <label for="liveCam">Cámara</label>
+            <select id="liveCam"></select>
+            <span class="note" id="liveCamNote"></span>
+          </div>
+          <div class="stage" id="stage">
+            <img id="video" src="/video" alt="Video en vivo con recuadros, rastros y mapa de calor">
+            <canvas id="drawCanvas"></canvas>
+          </div>
+          <div class="drawbar">
+            <button class="btn" id="btnDrawLine">Dibujar línea</button>
+            <button class="btn" id="btnInvert">Invertir dirección</button>
+            <button class="btn" id="btnDrawZone">Dibujar zona</button>
+            <button class="btn" id="btnCancelDraw" hidden>Cancelar</button>
+            <span style="flex:1"></span>
+            <div class="seg" role="group" aria-label="Modo del mapa de calor">
+              <button data-heatmode="live" aria-pressed="true">Calor en vivo</button>
+              <button data-heatmode="accum" aria-pressed="false">Acumulado</button>
+            </div>
+            <button class="btn" id="btnResetHeat">Reiniciar mapa de calor</button>
+          </div>
+          <div class="drawhint" id="drawHint"></div>
+          <p class="note">Si alguien sale del cuadro y vuelve a entrar recibe un ID nuevo (no hay reidentificación),
+            por eso las "personas únicas" son una aproximación.</p>
+        </div>
+
+        <aside class="side">
+          <div class="card">
+            <div class="kpis">
+              <div class="kpi"><div class="label">Personas ahora</div><div class="value" id="kNow">–</div>
+                <div class="sub" id="kPeak">Pico: –</div></div>
+              <div class="kpi"><div class="label">Únicas hoy</div><div class="value" id="kToday">–</div>
+                <div class="sub" id="kSession">Sesión: –</div></div>
+              <div class="kpi in"><div class="label">Entradas (línea)</div><div class="value" id="kIn">–</div></div>
+              <div class="kpi"><div class="label">Salidas (línea)</div><div class="value" id="kOut">–</div></div>
+              <div class="kpi"><div class="label">Permanencia prom.</div><div class="value" id="kDwell">–</div>
+                <div class="sub" id="kMedian">Mediana: –</div></div>
+              <div class="kpi"><div class="label">FPS</div><div class="value" id="kFps">–</div>
+                <div class="sub" id="kInfer">–</div></div>
+              <div class="kpi in"><div class="label">Compradores hoy</div><div class="value" id="kBuyers">–</div>
+                <div class="sub" id="kConv">Conversión: –</div></div>
+              <div class="kpi"><div class="label">Puertas (hoy, sesión)</div><div class="value" id="kDoors">–</div>
+                <div class="sub" id="kDoorsSub">entradas / salidas</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Capas del video</h3>
+            <div class="switches">
+              <label class="switch"><input type="checkbox" data-cfg="show_boxes">Recuadros</label>
+              <label class="switch"><input type="checkbox" data-cfg="show_trails">Rastros</label>
+              <label class="switch"><input type="checkbox" data-cfg="show_heatmap">Mapa de calor</label>
+              <label class="switch"><input type="checkbox" data-cfg="show_zones">Zonas</label>
+              <label class="switch"><input type="checkbox" data-cfg="show_line">Línea</label>
+              <label class="switch"><input type="checkbox" data-cfg="privacy_blur">Privacidad</label>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Personas en cuadro <small id="peopleCount"></small></h3>
+            <div class="people" id="people"><span class="empty">Nadie en cuadro.</span></div>
+          </div>
+          <div class="card" id="liveZonesCard" hidden>
+            <h3>Zonas <small>sesión actual</small></h3>
+            <table><thead><tr><th>Zona</th><th class="num">Ahora</th><th class="num">Pasaron</th><th class="num">Se detuvieron</th></tr></thead>
+              <tbody id="liveZones"></tbody></table>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ================= ANALÍTICA ================= -->
+    <section class="view" id="view-analytics" hidden>
+      <div class="filters">
+        <div class="seg" role="group" aria-label="Rango">
+          <button data-range="today" aria-pressed="true">Hoy</button>
+          <button data-range="hour" aria-pressed="false">Última hora</button>
+          <button data-range="week" aria-pressed="false" title="Últimos 7 días, incluido hoy">Semana</button>
+          <button data-range="month" aria-pressed="false" title="Últimos 30 días, incluido hoy">Mes</button>
+          <button data-range="custom" aria-pressed="false">Personalizado</button>
+        </div>
+        <span class="custom" id="customRange" hidden>
+          <input type="datetime-local" id="rangeStart" aria-label="Desde"> –
+          <input type="datetime-local" id="rangeEnd" aria-label="Hasta">
+        </span>
+        <label>Intervalo
+          <select id="bucket">
+            <option value="5">5 min</option>
+            <option value="15" selected>15 min</option>
+            <option value="60">60 min</option>
+            <option value="1440">1 día</option>
+          </select>
+        </label>
+        <button class="btn" id="btnRefresh">Actualizar</button>
+        <span class="spacer"></span>
+        <button class="btn primary" id="btnCsv">Exportar CSV</button>
+      </div>
+
+      <div class="totals">
+        <div class="kpi"><div class="label">Personas únicas</div><div class="value" id="tUnique">–</div></div>
+        <div class="kpi in"><div class="label">Entradas</div><div class="value" id="tIn">–</div></div>
+        <div class="kpi"><div class="label">Salidas</div><div class="value" id="tOut">–</div></div>
+        <div class="kpi"><div class="label">Pico de ocupación</div><div class="value" id="tPeak">–</div><div class="sub" id="tPeakAt"></div></div>
+        <div class="kpi"><div class="label">Permanencia prom.</div><div class="value" id="tDwell">–</div><div class="sub" id="tMedian"></div></div>
+      </div>
+
+      <div class="charts">
+        <div class="card wide">
+          <h3>Ocupación en el tiempo <small>personas en cuadro</small></h3>
+          <div class="legend"><span><i style="background:var(--chart-2)"></i>Promedio</span><span><i style="background:var(--chart-1)"></i>Máximo</span></div>
+          <div class="chart-box"><canvas id="chOcc" aria-label="Ocupación en el tiempo"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Personas únicas por intervalo</h3>
+          <div class="chart-box"><canvas id="chUnique" aria-label="Personas únicas por intervalo"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Distribución de permanencia</h3>
+          <div class="chart-box"><canvas id="chDwell" aria-label="Distribución de permanencia"></canvas></div>
+        </div>
+        <div class="card wide">
+          <h3>Entradas vs. salidas por hora</h3>
+          <div class="legend"><span><i style="background:var(--chart-1)"></i>Entradas</span><span><i style="background:var(--chart-2)"></i>Salidas</span></div>
+          <div class="chart-box"><canvas id="chLine" aria-label="Entradas y salidas por hora"></canvas></div>
+        </div>
+        <div class="card wide">
+          <h3>Zonas</h3>
+          <table>
+            <thead><tr><th>Zona</th><th class="num">Pasaron</th><th class="num">Se detuvieron</th><th class="num">Tasa de detención</th><th class="num">Permanencia prom.</th></tr></thead>
+            <tbody id="zoneTable"></tbody>
+          </table>
+        </div>
+        <div class="card wide" id="hourlyCard">
+          <h3>Tráfico por hora de cada día <small>¿cuáles son las horas de mayor tráfico en cada área?</small></h3>
+          <div class="filters hourly-filters">
+            <label>Área <select id="hArea"><option value="store">Toda la tienda</option></select></label>
+            <div class="seg" role="group" aria-label="Métrica">
+              <button data-hmetric="people" aria-pressed="true">Personas</button>
+              <button data-hmetric="buyers" aria-pressed="false">Compradores</button>
+            </div>
+            <div class="seg" role="group" aria-label="Vista">
+              <button data-hview="days" aria-pressed="true">Cada día</button>
+              <button data-hview="weekday" aria-pressed="false">Promedio por día de la semana</button>
+            </div>
+          </div>
+          <p class="hourly-peak" id="hPeak"></p>
+          <div class="table-scroll"><table class="hourly" id="hTable"></table></div>
+          <p class="note">Cada celda = personas distintas que entraron a la tienda (o al área) en esa hora. Más oscuro = más tráfico.
+            Usa <b>Semana</b> o <b>Mes</b> arriba para comparar varios días. El personal no se cuenta.</p>
+          <h3 style="margin-top:18px">Hora pico de cada área <small>promedio por día en el rango · clic en un área para verla arriba</small></h3>
+          <div class="table-scroll">
+            <table class="peaks">
+              <thead><tr><th>Área</th><th>Hora pico</th><th class="num">Prom./día en la hora pico</th><th>Otras horas fuertes</th><th class="num">Total</th><th>Perfil del día (00h → 23h)</th></tr></thead>
+              <tbody id="hPeaks"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card wide">
+          <h3>Mapa de calor acumulado <small id="heatRangeLabel"></small></h3>
+          <div class="heat-wrap">
+            <img id="heatImg" alt="Mapa de calor acumulado sobre el cuadro de referencia">
+            <div>
+              <p class="note">Se dibuja sobre un cuadro de referencia de la cámara, tomado al iniciar sin personas
+                si es posible. Si había alguien, aparece completamente desenfocado.</p>
+              <p class="note">Estado del cuadro: <b id="refStatus">–</b></p>
+              <button class="btn" id="btnRecapture">Recapturar cuadro de referencia</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= COMPRADORES ================= -->
+    <section class="view" id="view-buyers" hidden>
+      <div class="filters">
+        <div class="seg" role="group" aria-label="Rango">
+          <button data-brange="today" aria-pressed="true">Hoy</button>
+          <button data-brange="hour" aria-pressed="false">Última hora</button>
+          <button data-brange="week" aria-pressed="false" title="Últimos 7 días, incluido hoy">Semana</button>
+          <button data-brange="month" aria-pressed="false" title="Últimos 30 días, incluido hoy">Mes</button>
+          <button data-brange="custom" aria-pressed="false">Personalizado</button>
+        </div>
+        <span class="custom" id="bCustom" hidden>
+          <input type="datetime-local" id="bStart" aria-label="Desde"> –
+          <input type="datetime-local" id="bEnd" aria-label="Hasta">
+        </span>
+        <button class="btn" id="bRefresh">Actualizar</button>
+        <span class="spacer"></span>
+        <button class="btn primary" id="bCsv">Exportar CSV</button>
+      </div>
+      <div class="alert info" id="bNoCheckout" hidden><div><b>Falta la zona de cajas.</b>
+        <p>En la pestaña Plano dibuja un área, cámbiale el tipo a "Zona de cajas" y asígnale la cámara que la ve.
+          Quien acumule ahí el tiempo configurado cuenta como comprador.</p></div></div>
+
+      <div class="buyers-head">
+        <div class="card conv">
+          <div class="label">Tasa de conversión</div>
+          <div class="big" id="bConv">–</div>
+          <div class="note" id="bConvSub"></div>
+        </div>
+        <div class="card group buyers"><div class="label">Compradores</div><div class="big" id="bBuy">–</div><div class="note" id="bBuySub"></div></div>
+        <div class="card group non"><div class="label">No compradores <small>(solo transitaron)</small></div><div class="big" id="bNon">–</div><div class="note" id="bNonSub"></div></div>
+        <div class="card group total"><div class="label">Total de personas</div><div class="big" id="bTot">–</div><div class="note" id="bTotSub"></div></div>
+      </div>
+
+      <div class="charts">
+        <div class="card wide">
+          <h3>Estadísticas por grupo</h3>
+          <div class="table-scroll">
+            <table class="compare">
+              <thead><tr><th>Métrica</th><th class="num">Compradores</th><th class="num">No compradores</th><th class="num">Total</th></tr></thead>
+              <tbody id="bTable"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3 id="bHourTitle">Compradores y no compradores por hora</h3>
+          <div class="legend"><span><i style="background:var(--chart-1)"></i>Compradores</span><span><i style="background:var(--chart-2)"></i>No compradores</span></div>
+          <div class="chart-box"><canvas id="chBuyHour" aria-label="Compradores y no compradores por hora"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Permanencia en la tienda por grupo</h3>
+          <div class="legend"><span><i style="background:var(--chart-1)"></i>Compradores</span><span><i style="background:var(--chart-2)"></i>No compradores</span></div>
+          <div class="chart-box"><canvas id="chBuyDwell" aria-label="Distribución de permanencia por grupo"></canvas></div>
+        </div>
+        <div class="card wide">
+          <h3>¿Qué pasillos visita cada grupo? <small>% de las personas de cada grupo que pasó por el área</small></h3>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Área</th><th class="num">Compradores</th><th class="num">No compradores</th><th class="num">Diferencia</th></tr></thead>
+              <tbody id="bAreas"></tbody>
+            </table>
+          </div>
+          <p class="note">Una diferencia positiva grande indica un pasillo que recorren sobre todo quienes terminan comprando.</p>
+        </div>
+        <div class="card wide">
+          <h3>Cajas <small>cada caja por separado · la compra se atribuye a la caja donde el cliente más tiempo estuvo</small></h3>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Caja (zona del cliente)</th><th class="num">En fila ahora</th><th class="num">Personas que pasaron</th><th class="num">Compras</th><th class="num">% de las compras</th><th class="num">Tiempo promedio en caja</th></tr></thead>
+              <tbody id="bCheckouts"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Personal excluido <small>no cuenta en ninguna estadística</small></h3>
+          <div class="big-inline" id="bStaff">–</div>
+          <ul class="rank-list" id="bStaffWhy"></ul>
+          <p class="note" id="bStaffNote"></p>
+        </div>
+        <div class="card">
+          <h3>Entradas y salidas por puerta</h3>
+          <table><thead><tr><th>Puerta</th><th class="num">Entradas</th><th class="num">Salidas</th></tr></thead><tbody id="bDoors"></tbody></table>
+        </div>
+        <div class="card">
+          <h3>En la tienda ahora</h3>
+          <div class="people" id="bLive"><span class="empty">Nadie en la tienda.</span></div>
+        </div>
+      </div>
+      <p class="note">Comprador exitoso = acumuló al menos <b id="bSecs">20</b> s en zonas de cajas. No compradores = el resto de las personas que
+        entraron (solo transitaron o miraron sin pasar por caja). Quienes siguen en la tienda pueden cambiar de grupo al pasar por caja.</p>
+    </section>
+
+    <!-- ================= TIENDA 3D ================= -->
+    <section class="view" id="view-store" hidden>
+      <div class="filters">
+        <div class="seg" role="group" aria-label="Rango">
+          <button data-s3drange="today" aria-pressed="true">Hoy</button>
+          <button data-s3drange="hour" aria-pressed="false">Última hora</button>
+          <button data-s3drange="week" aria-pressed="false" title="Últimos 7 días, incluido hoy">Semana</button>
+          <button data-s3drange="month" aria-pressed="false" title="Últimos 30 días, incluido hoy">Mes</button>
+          <button data-s3drange="custom" aria-pressed="false">Personalizado</button>
+        </div>
+        <span class="custom" id="s3dCustom" hidden>
+          <input type="datetime-local" id="s3dStart" aria-label="Desde"> –
+          <input type="datetime-local" id="s3dEnd" aria-label="Hasta">
+        </span>
+        <label>Colorear áreas por <select id="s3dMetric"></select></label>
+        <div class="seg" role="group" aria-label="Mapa de calor del piso">
+          <button data-s3dheat="range" aria-pressed="true">Calor del rango</button>
+          <button data-s3dheat="live" aria-pressed="false">Calor en vivo</button>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn" id="s3dRefresh">Actualizar</button>
+        <button class="btn primary" id="s3dCsv">Exportar CSV</button>
+      </div>
+      <div class="store-wrap">
+        <div class="card store-stage">
+          <div id="store3d" class="store3d"></div>
+          <div class="s3d-overlay">
+            <div class="s3d-legend" id="s3dLegend"></div>
+            <div class="s3d-tools">
+              <button class="btn" id="s3dPersp">Vista 3D</button>
+              <button class="btn" id="s3dTop">Desde arriba</button>
+              <label class="switch"><input type="checkbox" id="s3dHeat" checked>Calor</label>
+              <label class="switch"><input type="checkbox" id="s3dPeople" checked>Personas</label>
+              <label class="switch"><input type="checkbox" id="s3dLabels" checked>Etiquetas</label>
+            </div>
+          </div>
+          <div class="note s3d-live" id="s3dLive"></div>
+        </div>
+        <aside class="side">
+          <div class="card">
+            <h3>Ranking de áreas <small>¿qué pasillo tiene más flujo?</small></h3>
+            <p class="note" id="s3dTotals"></p>
+            <div class="table-scroll">
+              <table><thead><tr><th class="num">#</th><th>Área</th><th class="num">Valor</th><th class="num">Pasaron</th><th class="num">Penetr.</th><th class="num">Detención</th><th class="num">Perm.</th></tr></thead>
+                <tbody id="s3dRanking"></tbody></table>
+            </div>
+          </div>
+          <div class="card"><h3>Movimientos entre áreas</h3><ol class="rank-list" id="s3dTrans"></ol></div>
+          <div class="card"><h3>Recorridos frecuentes</h3><ol class="rank-list" id="s3dPaths"></ol></div>
+        </aside>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>Personas por área y hora <small>para planificar exhibiciones y reposición</small></h3>
+        <p class="note" id="s3dMatrixNote"></p>
+        <div class="table-scroll"><table class="matrix" id="s3dMatrix"></table></div>
+      </div>
+      <p class="note">Reidentificación: <span id="s3dReid"></span> La penetración es el % de visitantes únicos que pasó por el área.
+        Si una persona se pierde más tiempo que la ventana de re-entrada o de traspaso, se cuenta como nueva.</p>
+    </section>
+
+    <!-- ================= PLANO ================= -->
+    <section class="view" id="view-plan" hidden>
+      <div class="plan-steps" id="planSteps" aria-label="Pasos para armar el plano"></div>
+      <div class="plan-wrap">
+        <div class="plan-tools card" id="planTools" aria-label="Herramientas"></div>
+        <div class="plan-canvas card">
+          <div class="plan-top">
+            <button class="btn" id="planUndo" title="Deshacer (Ctrl+Z)">Deshacer</button>
+            <button class="btn" id="planRedo" title="Rehacer (Ctrl+Y)">Rehacer</button>
+            <span class="sep"></span>
+            <button class="btn" id="planZoomOut" title="Alejar">−</button>
+            <span id="planZoom" class="plan-zoom">100 %</span>
+            <button class="btn" id="planZoomIn" title="Acercar">+</button>
+            <button class="btn" id="planFit" title="Ver todo el local">Ajustar</button>
+            <span class="sep"></span>
+            <label class="switch" title="Alt al arrastrar lo desactiva un momento"><input type="checkbox" id="planSnap" checked>Imán</label>
+            <span class="spacer"></span>
+            <button class="btn" id="planGen">Generar góndolas…</button>
+            <button class="btn" id="planTemplates">Plantillas…</button>
+            <button class="btn" id="planBgBtn">Imagen de fondo…</button>
+            <input type="file" id="planBgFile" accept="image/*" hidden>
+            <button class="btn" id="planHelpBtn" title="Atajos de teclado (?)">?</button>
+          </div>
+          <svg id="planSvg" class="plan-svg" xmlns="http://www.w3.org/2000/svg" aria-label="Plano de la tienda"></svg>
+          <div class="plan-bar"><span id="planHint"></span><span class="spacer"></span><span id="planCursor"></span><span id="planStatus" class="plan-status"></span></div>
+        </div>
+        <aside class="plan-side">
+          <div class="card" id="planProps"></div>
+          <div class="card"><h3>Capas</h3><div id="planLayers" class="layers"></div></div>
+          <div class="card"><h3>Elementos <small id="planCount"></small></h3><div id="planList" class="el-list"></div></div>
+        </aside>
+      </div>
+    </section>
+
+    <dialog id="tplDialog" class="dialog">
+      <h2>Plantillas</h2>
+      <p class="note">Arranca con una distribución típica y después ajústala a tu local. <b>Reemplaza el plano actual</b> (puedes deshacer).</p>
+      <div class="tpl-grid" id="tplList"></div>
+      <div class="dialog-actions"><button class="btn" id="tplCancel">Cancelar</button></div>
+    </dialog>
+
+    <dialog id="planHelp" class="dialog">
+      <h2>Atajos del editor</h2>
+      <div class="help-grid" id="planHelpList"></div>
+      <p class="note">Shift + clic agrega o quita de la selección · arrastrar sobre el piso selecciona varios con un rectángulo ·
+        Alt + clic en un vértice lo borra · doble clic sobre el borde de un área o pared agrega un vértice ·
+        Alt mientras arrastras desactiva el imán · barra espaciadora o botón central del mouse para desplazar.</p>
+      <div class="dialog-actions"><button class="btn primary" id="planHelpClose">Entendido</button></div>
+    </dialog>
+
+    <!-- ================= CONFIGURACIÓN ================= -->
+    <section class="view" id="view-settings" hidden>
+      <div class="settings">
+        <div class="card">
+          <h2>Cámara</h2>
+          <div class="field">
+            <label for="camSelect">Cámara</label>
+            <div class="row">
+              <select id="camSelect"><option>Buscando…</option></select>
+              <button class="btn" id="btnScanCams">Buscar cámaras</button>
+              <button class="btn" id="btnTestCam">Probar</button>
+              <button class="btn primary" id="btnUseCam">Usar esta cámara</button>
+            </div>
+            <span class="help" id="camHelp">Se buscan los índices 0 a 5.</span>
+            <img class="cam-preview" id="camPreview" alt="Vista de prueba de la cámara" hidden>
+          </div>
+          <div class="field">
+            <label for="resSelect">Resolución</label>
+            <select id="resSelect">
+              <option value="640x480">640 × 480 (recomendado en CPU)</option>
+              <option value="800x600">800 × 600</option>
+              <option value="1280x720">1280 × 720</option>
+              <option value="1920x1080">1920 × 1080</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="imgszSelect">Tamaño de inferencia (imgsz)</label>
+            <select id="imgszSelect" data-cfg-select="imgsz" data-num>
+              <option>320</option><option>384</option><option>416</option><option>480</option><option>512</option><option>640</option>
+            </select>
+            <span class="help">Más chico = más FPS, menos precisión con personas lejanas.</span>
+          </div>
+          <div class="field">
+            <label for="conf">Confianza mínima <output data-for="confidence"></output></label>
+            <input type="range" id="conf" min="0.1" max="0.95" step="0.05" data-cfg-range="confidence">
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Seguimiento y rastros</h2>
+          <div class="field">
+            <label for="trail">Duración del rastro <output data-for="trail_seconds"></output></label>
+            <input type="range" id="trail" min="1" max="10" step="0.5" data-cfg-range="trail_seconds" data-unit=" s">
+          </div>
+          <div class="field">
+            <span class="label">Punto de seguimiento</span>
+            <div class="row">
+              <label class="radio"><input type="radio" name="tp" value="center" data-cfg-radio="track_point">Centro del recuadro</label>
+              <label class="radio"><input type="radio" name="tp" value="bottom" data-cfg-radio="track_point">Base (pies)</label>
+            </div>
+            <span class="help">Con cámara cenital en tienda, usa "Base".</span>
+          </div>
+          <div class="field">
+            <label for="minTrack">Duración mínima para contar a una persona <output data-for="min_track_seconds"></output></label>
+            <input type="range" id="minTrack" min="0" max="5" step="0.5" data-cfg-range="min_track_seconds" data-unit=" s">
+          </div>
+          <div class="field">
+            <label for="lost">Espera antes de dar por perdido un track <output data-for="lost_track_seconds"></output></label>
+            <input type="range" id="lost" min="0.5" max="10" step="0.5" data-cfg-range="lost_track_seconds" data-unit=" s">
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Mapa de calor y zonas</h2>
+          <div class="field">
+            <label for="half">Vida media del mapa en vivo <output data-for="heatmap_half_life"></output></label>
+            <input type="range" id="half" min="5" max="300" step="5" data-cfg-range="heatmap_half_life" data-unit=" s">
+          </div>
+          <div class="field">
+            <label for="stop">Umbral de "se detuvo" en una zona <output data-for="stop_seconds"></output></label>
+            <input type="range" id="stop" min="1" max="120" step="1" data-cfg-range="stop_seconds" data-unit=" s">
+          </div>
+          <div class="field">
+            <label for="buyerSecs">Tiempo en zona de cajas para "comprador exitoso" <output data-for="buyer_seconds"></output></label>
+            <input type="range" id="buyerSecs" min="5" max="180" step="5" data-cfg-range="buyer_seconds" data-unit=" s">
+            <span class="help">Se suma todo el tiempo que la persona pasa en las zonas del cliente de las cajas del plano.</span>
+          </div>
+          <div class="field">
+            <label for="staffHours">Considerar personal a quien pase más de <output data-for="staff_hours"></output></label>
+            <input type="range" id="staffHours" min="0" max="12" step="0.5" data-cfg-range="staff_hours" data-unit=" h">
+            <span class="help">Trabajadores y personal extra: se excluyen de todas las estadísticas de clientes. 0 = desactivado.</span>
+          </div>
+          <div class="field">
+            <label for="staffZone">Tiempo en una zona de personal para marcar a alguien como personal <output data-for="staff_zone_seconds"></output></label>
+            <input type="range" id="staffZone" min="5" max="120" step="5" data-cfg-range="staff_zone_seconds" data-unit=" s">
+            <span class="help">Zonas de personal: detrás de cada caja (se crean solas) o las que marques en el Plano (detrás del mostrador, depósito).</span>
+          </div>
+          <div class="field">
+            <span class="label">Privacidad</span>
+            <label class="switch"><input type="checkbox" data-cfg="privacy_blur">Desenfocar la mitad superior de cada recuadro (cara) en el video</label>
+          </div>
+        </div>
+
+        <div class="card wide" id="camsCard">
+          <h2>Cámaras de la tienda <small>webcam USB, CCTV por RTSP o video de prueba</small></h2>
+          <div class="table-scroll">
+            <table class="cams-table">
+              <thead><tr><th>Nombre</th><th>Fuente</th><th>FPS máx.</th><th>Estado</th><th>Calibración</th><th></th></tr></thead>
+              <tbody id="camsList"></tbody>
+            </table>
+          </div>
+          <form id="camAddForm" class="cam-add">
+            <input type="text" name="name" placeholder="Nombre (ej.: Pasillo 3)" maxlength="40" aria-label="Nombre de la cámara">
+            <select name="kind" id="camKind" aria-label="Tipo de fuente">
+              <option value="stream">CCTV / IP (RTSP)</option>
+              <option value="usb">Webcam USB</option>
+              <option value="file">Video (demo)</option>
+            </select>
+            <input type="text" name="source" id="camSource" required aria-label="Fuente" class="grow">
+            <label>FPS máx. <input type="number" name="max_fps" value="8" min="0" max="30" style="width:4.5em"></label>
+            <button class="btn primary" type="submit">Agregar cámara</button>
+            <button class="btn" type="button" id="camsRefresh">Actualizar estado</button>
+          </form>
+          <p class="note">Ejemplos de URL RTSP (usa el <b>substream</b> de baja resolución, que basta para contar):
+            Hikvision <code>rtsp://usuario:clave@IP:554/Streaming/Channels/102</code> ·
+            Dahua <code>rtsp://usuario:clave@IP:554/cam/realmonitor?channel=1&amp;subtype=1</code>.
+            La primera cámara es la <b>principal</b>: mantiene la línea y las zonas dibujadas sobre su imagen.
+            Con varias cámaras en esta PC limita cada una a 5–8 FPS para repartir el CPU.</p>
+        </div>
+
+        <div class="card">
+          <h2>Reidentificación</h2>
+          <div class="field">
+            <label for="reentry">Ventana de re-entrada en la misma cámara <output data-for="reid_reentry_s"></output></label>
+            <input type="range" id="reentry" min="0" max="120" step="5" data-cfg-range="reid_reentry_s" data-unit=" s">
+            <span class="help">Si alguien sale y vuelve dentro de este tiempo con ropa parecida, conserva su ID. 0 = desactivado.</span>
+          </div>
+          <div class="field">
+            <label for="handoff">Ventana de traspaso entre cámaras <output data-for="reid_handoff_s"></output></label>
+            <input type="range" id="handoff" min="0" max="60" step="1" data-cfg-range="reid_handoff_s" data-unit=" s">
+            <span class="help">Tiempo máximo para pasar del campo de una cámara al de otra. Con cámaras que se superponen, la unión es inmediata.</span>
+          </div>
+          <div class="field">
+            <label class="switch"><input type="checkbox" data-cfg="show_plan_areas">Dibujar las áreas del plano sobre el video (sirve para comprobar la calibración)</label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Línea y zonas</h2>
+          <div class="field">
+            <span class="label">Línea virtual</span>
+            <span class="help" id="lineInfo">Sin línea.</span>
+            <div class="row">
+              <button class="btn" data-goto-draw="line">Dibujar línea</button>
+              <button class="btn" id="btnInvert2">Invertir dirección</button>
+              <button class="btn danger" id="btnDelLine">Borrar línea</button>
+            </div>
+          </div>
+          <div class="field">
+            <span class="label">Zonas</span>
+            <ul class="zone-list" id="zoneList"></ul>
+            <div class="row">
+              <button class="btn" data-goto-draw="zone">Dibujar zona</button>
+            </div>
+            <span class="help">Los cambios se guardan solos y se aplican sin reiniciar.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- generador de góndolas -->
+  <dialog id="genDialog" class="dialog">
+    <form id="genForm">
+      <h2>Generar góndolas y pasillos</h2>
+      <p class="note">Crea una fila de góndolas paralelas con sus pasillos ya marcados como áreas de análisis.</p>
+      <div class="gen-grid">
+        <label>Cantidad de góndolas <input type="number" name="n" value="5" min="1" max="40"></label>
+        <label>Orientación
+          <select name="dir"><option value="v">Verticales (de arriba a abajo)</option><option value="h">Horizontales</option></select></label>
+        <label>Largo de cada góndola (m) <input type="number" name="len" value="6" min="0.5" step="0.1"></label>
+        <label>Ancho de cada góndola (m) <input type="number" name="gw" value="0.9" min="0.2" step="0.1"></label>
+        <label>Ancho del pasillo (m) <input type="number" name="aisle" value="1.6" min="0.5" step="0.1"></label>
+        <label>Altura (m) <input type="number" name="h" value="1.8" min="0.3" step="0.1"></label>
+        <label>Inicio X (m) <input type="number" name="x0" value="3" step="0.5"></label>
+        <label>Inicio Y (m) <input type="number" name="y0" value="2" step="0.5"></label>
+        <label class="span2">Categoría base (opcional) <input type="text" name="cat" placeholder="Ej.: Pasillo de abarrotes" maxlength="30"></label>
+        <label class="switch span2"><input type="checkbox" name="areas" checked>Crear un área de análisis por pasillo</label>
+        <label class="switch span2"><input type="checkbox" name="outer" checked>Incluir los pasillos exteriores (antes de la primera y después de la última)</label>
+      </div>
+      <div class="dialog-actions"><button class="btn" type="button" id="genCancel">Cancelar</button><button class="btn primary" type="submit">Generar</button></div>
+    </form>
+  </dialog>
+
+  <!-- calibración imagen ↔ plano -->
+  <dialog id="calDialog" class="dialog wide">
+    <h2 id="calTitle">Calibrar cámara</h2>
+    <p class="note">Marca <b>al menos 4 puntos del piso</b> que reconozcas en la imagen y en el plano: esquinas de baldosas, la base
+      de una góndola, una marca con cinta. Sepáralos lo más posible (idealmente cerca de las 4 esquinas de la imagen) y no pongas
+      3 en línea recta. Con más de 4 puntos la calibración es más robusta.</p>
+    <div class="cal-step" id="calStep"></div>
+    <div class="cal-grid">
+      <div class="cal-img"><img id="calImg" alt="Imagen actual de la cámara"><canvas id="calCanvas"></canvas></div>
+      <svg id="calPlan" class="plan-svg cal-plan" xmlns="http://www.w3.org/2000/svg" aria-label="Plano para calibrar"></svg>
+    </div>
+    <div class="cal-foot">
+      <ol id="calPairs" class="cal-pairs"></ol>
+      <div>
+        <p class="note" id="calCount"></p>
+        <p id="calResult"></p>
+        <div class="dialog-actions">
+          <button class="btn" id="calSnap">Nueva imagen</button>
+          <button class="btn" id="calUndo">Deshacer punto</button>
+          <button class="btn" id="calClear">Limpiar</button>
+          <button class="btn danger" id="calRemove">Quitar calibración</button>
+          <button class="btn primary" id="calSave">Guardar calibración</button>
+          <button class="btn" id="calClose">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- pregunta / confirmación (reemplaza prompt() y confirm(), que algunos navegadores bloquean) -->
+  <dialog id="askDialog" class="dialog">
+    <form method="dialog" id="askForm">
+      <h2 id="askTitle"></h2>
+      <p class="note" id="askText"></p>
+      <input type="text" id="askInput" maxlength="40" aria-label="Respuesta" style="width:100%">
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="askCancel">Cancelar</button>
+        <button class="btn primary" value="ok" id="askOk">Aceptar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script type="importmap">{ "imports": { "three": "/static/vendor/three/three.module.min.js" } }</script>
+  <script src="/static/chart.umd.min.js"></script>
+  <script src="/static/app.js"></script>
+  <script src="/static/plan-editor.js"></script>
+  <script src="/static/cameras.js"></script>
+  <script src="/static/buyers.js"></script>
+  <script src="/static/hourly.js"></script>
+  <script type="module" src="/static/store3d.js"></script>
+</body>
+</html>

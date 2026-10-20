@@ -1,0 +1,2 @@
+# Opcional: acelera la inferencia en CPU (sobre todo Intel). Ver export_openvino.py
+openvino==2026.4.1
