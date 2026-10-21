@@ -60,7 +60,7 @@
       const actions = [
         `<button class="btn small" data-key="${s.id}">Nueva clave</button>`,
         s.status === 'active' ? `<button class="btn small danger" data-suspend="${s.id}">Suspender</button>`
-          : `<button class="btn small" data-activate="${s.id}">Reactivar</button>`,
+          : `<button class="btn small" data-activate="${s.id}">${s.status === 'suspended' ? 'Reactivar' : 'Activar'}</button>`,
       ].join(' ');
       return `<tr><td class="site-name">${esc(s.name)}<div class="note">${ago(s.last_sync_at)}</div></td>
         <td><span class="state ${state[0]}">${state[1]}</span></td>
@@ -115,7 +115,7 @@
         if (!confirm(`¿Suspender «${site.name}»? Dejará de recibir sus datos hasta que la reactives.`)) return;
         act(() => api(`/api/manage/sites/${site.id}/suspend`, 'POST'), 'Sede suspendida.');
       } else if (b.dataset.activate) {
-        act(() => api(`/api/manage/sites/${site.id}/activate`, 'POST'), 'Sede reactivada.');
+        act(() => api(`/api/manage/sites/${site.id}/activate`, 'POST'), 'Sede activada.');
       }
     });
     $('#keyCopy').onclick = async () => {
