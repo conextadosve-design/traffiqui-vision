@@ -19,7 +19,7 @@ if licencia.exists():
 binaries = []
 hiddenimports = (collect_submodules("uvicorn") + collect_submodules("sqlalchemy.dialects.sqlite")
                  + ["pystray._win32", "app.main", "cloud.main"])
-for pkg in ("ultralytics",):
+for pkg in ("ultralytics", "tzdata"):   # tzdata: zonas horarias en Windows
     d, b, h = collect_all(pkg)
     datas += d
     binaries += b
