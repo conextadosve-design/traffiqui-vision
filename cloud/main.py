@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete, insert, select
 from sqlalchemy.engine import Engine
 
-from cloud import config
+from cloud import config, manage
 from cloud.db import make_engine, organizations, sites, user_sessions, users
 from cloud.ingest import IngestError, ingest
 from cloud.reports import RANGES, org_report, resolve_range
@@ -27,8 +27,8 @@ APP_CSS = config.ROOT / "app" / "static" / "styles.css"   # misma identidad visu
 COOKIE = "tq_session"
 
 STATUS_MSG = {
-    "pending": "Esta sede está pendiente de pago. Contacta con Traffiqui para activarla.",
-    "suspended": "Esta sede está suspendida. Contacta con Traffiqui.",
+    "pending": f"Esta sede está pendiente de activación. Contacta con {config.CONTACT}.",
+    "suspended": "Esta sede está suspendida. La sede principal puede reactivarla desde su panel.",
 }
 
 
@@ -69,6 +69,15 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             rows = [dict(r) for r in conn.execute(q).mappings()]
         return dict(org), rows
 
+    def set_session(conn, response: Response, user_id: int) -> None:
+        token = new_session_token()
+        now = time.time()
+        conn.execute(insert(user_sessions).values(token_hash=sha256(token), user_id=user_id, created_at=now,
+                                                  expires_at=now + config.SESSION_DAYS * 86400))
+        conn.execute(delete(user_sessions).where(user_sessions.c.expires_at < now))
+        response.set_cookie(COOKIE, token, max_age=config.SESSION_DAYS * 86400, httponly=True, samesite="lax",
+                            secure=config.COOKIE_SECURE)
+
     @app.post("/api/auth/login")
     async def login(request: Request, response: Response):
         body = await request.json()
@@ -78,13 +87,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             user = conn.execute(select(users).where(users.c.email == email, users.c.active == 1)).mappings().first()
             if user is None or not verify_password(password, user["password_hash"]):
                 raise HTTPException(401, "Correo o contraseña incorrectos.")
-            token = new_session_token()
-            now = time.time()
-            conn.execute(insert(user_sessions).values(token_hash=sha256(token), user_id=user["id"], created_at=now,
-                                                      expires_at=now + config.SESSION_DAYS * 86400))
-            conn.execute(delete(user_sessions).where(user_sessions.c.expires_at < now))
-        response.set_cookie(COOKIE, token, max_age=config.SESSION_DAYS * 86400, httponly=True, samesite="lax",
-                            secure=config.COOKIE_SECURE)
+            set_session(conn, response, user["id"])
         return {"ok": True}
 
     @app.post("/api/auth/logout")
@@ -132,13 +135,17 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             raise HTTPException(401, "Falta la clave de sede.")
         with engine.connect() as conn:
             row = conn.execute(
-                select(sites, organizations.c.name.label("org_name"), organizations.c.timezone)
+                select(sites, organizations.c.name.label("org_name"), organizations.c.timezone,
+                       organizations.c.license_code)
                 .join(organizations, organizations.c.id == sites.c.org_id)
                 .where(sites.c.key_hash == sha256(key))).mappings().first()
-        if row is None:
-            raise HTTPException(401, "Clave de sede no válida.")
-        if row["status"] != "active":
-            raise HTTPException(403, STATUS_MSG[row["status"]])
+            if row is None:
+                raise HTTPException(401, "Clave de sede no válida.")
+            if row["status"] != "active":
+                raise HTTPException(403, STATUS_MSG[row["status"]])
+            org = {"id": row["org_id"], "name": row["org_name"], "license_code": row["license_code"]}
+            if row["id"] not in manage.licensed_site_ids(conn, org):
+                raise HTTPException(403, f"Esta sede no entra en la licencia de la empresa. Contacta con {config.CONTACT}.")
         return dict(row)
 
     @app.post("/api/agent/hello")
@@ -162,15 +169,36 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         return {"ok": True, "applied": applied}
 
     # ---- páginas ---------------------------------------------------------------------
+    manage.register(app, engine, current_user, set_session)
+
+    def page(name: str) -> FileResponse:
+        return FileResponse(STATIC_DIR / name, headers={"Cache-Control": "no-cache"})
+
+    def needs_setup() -> bool:
+        with engine.connect() as conn:
+            return conn.execute(select(users.c.id).limit(1)).first() is None
+
     @app.get("/")
     def index(request: Request):
+        if needs_setup():
+            return RedirectResponse("/setup")
         if not request.cookies.get(COOKIE):
             return RedirectResponse("/login")
-        return FileResponse(STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"})
+        return page("index.html")
+
+    @app.get("/sedes")
+    def sites_page(request: Request):
+        if not request.cookies.get(COOKIE):
+            return RedirectResponse("/login")
+        return page("sedes.html")
 
     @app.get("/login")
     def login_page():
-        return FileResponse(STATIC_DIR / "login.html", headers={"Cache-Control": "no-cache"})
+        return RedirectResponse("/setup") if needs_setup() else page("login.html")
+
+    @app.get("/setup")
+    def setup_page():
+        return page("setup.html") if needs_setup() else RedirectResponse("/login")
 
     @app.get("/vendor/chart.umd.min.js")
     def chart_js():

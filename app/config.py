@@ -2,12 +2,26 @@
 from __future__ import annotations
 
 import copy
+import os
+import sys
 import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = ROOT / "models"
-DATA_DIR = ROOT / "data"
+
+
+def _data_dir() -> Path:
+    """Base de datos, configuración y registros. Instalado como programa (.exe) van a
+    C:\\ProgramData\\Traffiqui, fuera de la carpeta del programa: actualizar o reinstalar no los borra."""
+    if os.environ.get("TRAFFIQUI_DATA"):
+        return Path(os.environ["TRAFFIQUI_DATA"])
+    if getattr(sys, "frozen", False):
+        return Path(os.environ.get("PROGRAMDATA", r"C:\ProgramData")) / "Traffiqui"
+    return ROOT / "data"
+
+
+DATA_DIR = _data_dir()
 
 DEFAULTS: dict = {
     # cámara

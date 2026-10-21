@@ -6,13 +6,13 @@ import pytest
 
 pytest.importorskip("sqlalchemy", reason="servidor central: pip install -r cloud/requirements.txt")
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app import cloud_sync
 from app.cloud_sync import CloudError, CloudSync
 from app.storage.db import Database
-from cloud import admin, config
-from cloud.db import global_tracks, make_engine, occupancy_samples, plan_heatmaps, sites
+from cloud import admin, config, licencia
+from cloud.db import global_tracks, make_engine, occupancy_samples, organizations, plan_heatmaps, sites
 from cloud.main import create_app
 from cloud.reports import resolve_range
 from cloud.security import hash_password, verify_password
@@ -36,8 +36,25 @@ def run_admin(engine, capsys, *args) -> str:
     return capsys.readouterr().out
 
 
+@pytest.fixture(autouse=True)
+def license_keys(monkeypatch):
+    """Par de claves de prueba: el servidor verifica las licencias con esta clave pública."""
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    priv = Ed25519PrivateKey.generate()
+    raw = priv.private_bytes(serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())
+    monkeypatch.setattr(licencia, "public_key", lambda *a: priv.public_key())
+    return licencia._b64e(raw)
+
+
+def give_license(engine, org_id, name, n, private):
+    with engine.begin() as c:
+        c.execute(update(organizations).where(organizations.c.id == org_id)
+                  .values(license_code=licencia.issue(name, n, private)))
+
+
 @pytest.fixture
-def org(engine, capsys):
+def org(engine, capsys, license_keys):
     """Empresa 1 con dos sedes activas, una pendiente y usuarios de cada rol; empresa 2 aparte."""
     run_admin(engine, capsys, "crear-empresa", "Farmacias Sol")
     run_admin(engine, capsys, "crear-sede", "1", "Chacao")
@@ -51,6 +68,7 @@ def org(engine, capsys):
     run_admin(engine, capsys, "crear-usuario", "ana@sol.com", "Ana", "hq", "--empresa", "1", "--clave", "gerencia123")
     run_admin(engine, capsys, "crear-usuario", "luis@sol.com", "Luis", "site", "--empresa", "1", "--sede", "2",
               "--clave", "encargado1")
+    give_license(engine, 1, "Farmacias Sol", 3, license_keys)
     run_admin(engine, capsys, "crear-empresa", "Otra empresa")
     run_admin(engine, capsys, "crear-sede", "2", "Ajena")
     run_admin(engine, capsys, "activar-sede", "4")
@@ -235,3 +253,98 @@ def test_rangos():
         resolve_range("custom", "America/Caracas", "07/10/2026", "2026-10-08")
     w0, w1 = resolve_range("week", "America/Caracas", now=2e9)
     assert 6 * 86400 < w1 - w0 <= 7 * 86400
+
+
+# ---- licencias -------------------------------------------------------------------------------------
+def test_licencia_firmada(license_keys):
+    code = licencia.issue("Farmacias Sol", 3, license_keys, expires="2030-01-01")
+    assert licencia.verify(code, "  farmacias   SOL ")["sedes"] == 3
+    assert licencia.allowed_sites(code, "Farmacias Sol") == 3
+    with pytest.raises(licencia.LicenseError, match="para la empresa"):
+        licencia.verify(code, "Otra empresa")
+    # cambiar el número de sedes rompe la firma
+    prefix, body, sig = code.split(".")
+    import json
+    data = json.loads(licencia._b64d(body)); data["sedes"] = 50
+    forged = ".".join([prefix, licencia._b64e(json.dumps(data).encode()), sig])
+    with pytest.raises(licencia.LicenseError, match="no es válido"):
+        licencia.verify(forged, "Farmacias Sol")
+    assert licencia.allowed_sites(forged, "Farmacias Sol") == licencia.FREE_SITES
+    from datetime import date
+    with pytest.raises(licencia.LicenseError, match="venció"):
+        licencia.verify(code, "Farmacias Sol", today=date(2031, 1, 1))
+    assert licencia.allowed_sites(None, "x") == licencia.FREE_SITES
+
+
+def test_licencia_limita_sedes_que_envian(client, org, engine, license_keys):
+    post = poster(client)
+    give_license(engine, 1, "Farmacias Sol", 1, license_keys)   # bajó a 1 sede: solo la primera activada
+    assert post(URL, org[1], "/api/agent/hello", {})["site"] == "Chacao"
+    with pytest.raises(CloudError, match="licencia"):
+        post(URL, org[2], "/api/agent/hello", {})
+
+
+# ---- primer uso y gestión desde el panel -------------------------------------------------------
+def test_primer_uso_y_gestion_de_sedes(client, license_keys):
+    assert client.get("/", follow_redirects=False).headers["location"] == "/setup"
+    assert client.get("/api/setup").json() == {"needed": True}
+    r = client.post("/api/setup", json={"empresa": "Farmacias Sol", "nombre": "Ana", "email": "ana@sol.com",
+                                        "password": "corta"})
+    assert r.status_code == 400
+    assert client.post("/api/setup", json={"empresa": "Farmacias Sol", "nombre": "Ana", "email": "ana@sol.com",
+                                           "password": "gerencia123"}).status_code == 200
+    # el asistente deja la sesión iniciada y no se puede repetir
+    assert client.get("/api/me").json()["role"] == "hq"
+    assert client.post("/api/setup", json={"empresa": "X", "nombre": "X", "email": "x@x.com",
+                                           "password": "12345678"}).status_code == 409
+
+    # sin licencia: 1 sede
+    first = client.post("/api/manage/sites", json={"name": "Chacao"}).json()
+    assert first["key"].startswith("tqs_")
+    r = client.post("/api/manage/sites", json={"name": "Altamira"})
+    assert r.status_code == 403 and config.CONTACT in r.json()["detail"]
+    # código de otra empresa: rechazado; el correcto amplía a 2
+    bad = licencia.issue("Otra", 5, license_keys)
+    assert client.post("/api/manage/license", json={"code": bad}).status_code == 400
+    good = licencia.issue("Farmacias Sol", 2, license_keys)
+    assert client.post("/api/manage/license", json={"code": good}).json()["sites_allowed"] == 2
+    second = client.post("/api/manage/sites", json={"name": "Altamira"}).json()
+
+    post = poster(client)
+    assert post(URL, second["key"], "/api/agent/hello", {})["site"] == "Altamira"
+    # nueva clave: la anterior deja de valer
+    new = client.post(f"/api/manage/sites/{second['id']}/key").json()["key"]
+    with pytest.raises(CloudError):
+        post(URL, second["key"], "/api/agent/hello", {})
+    assert post(URL, new, "/api/agent/hello", {})["site"] == "Altamira"
+    # suspender libera el cupo y bloquea la sede; reactivar vuelve a contar
+    client.post(f"/api/manage/sites/{second['id']}/suspend")
+    with pytest.raises(CloudError, match="suspendida"):
+        post(URL, new, "/api/agent/hello", {})
+    assert client.post(f"/api/manage/sites/{second['id']}/activate").status_code == 200
+
+    m = client.get("/api/manage").json()
+    assert m["org"]["license"]["sites_allowed"] == 2
+    assert [s["name"] for s in m["sites"]] == ["Chacao", "Altamira"]
+
+    # usuarios: un encargado solo ve su sede y no puede gestionar
+    r = client.post("/api/manage/users", json={"name": "Luis", "email": "luis@sol.com", "password": "encargado1",
+                                               "role": "site", "site_id": first["id"]})
+    luis = r.json()["id"]
+    assert client.post(f"/api/manage/users/{m['me']}/active", json={"active": False}).status_code == 400
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"email": "luis@sol.com", "password": "encargado1"})
+    assert [s["name"] for s in client.get("/api/report").json()["sites"]] == ["Chacao"]
+    assert client.get("/api/manage").status_code == 403
+    # desactivado: su sesión deja de valer
+    client.post("/api/auth/logout")
+    client.post("/api/auth/login", json={"email": "ana@sol.com", "password": "gerencia123"})
+    client.post(f"/api/manage/users/{luis}/active", json={"active": False})
+    assert client.post("/api/auth/login", json={"email": "luis@sol.com", "password": "encargado1"}).status_code == 401
+
+
+def test_primer_uso_solo_desde_el_propio_pc(engine, monkeypatch):
+    monkeypatch.setattr(config, "COOKIE_SECURE", False)
+    remote = TestClient(create_app(engine), client=("100.101.102.103", 50000))
+    r = remote.post("/api/setup", json={"empresa": "X", "nombre": "X", "email": "x@x.com", "password": "12345678"})
+    assert r.status_code == 403

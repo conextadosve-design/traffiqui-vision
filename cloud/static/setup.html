@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traffiqui · Primer uso</title>
+  <link rel="stylesheet" href="/vendor/styles.css">
+  <link rel="stylesheet" href="/static/cloud.css">
+</head>
+<body class="login-page">
+  <main class="login setup">
+    <div class="brand login-brand"><span>Traffiqui</span> Sede principal</div>
+    <form class="card" id="setupForm">
+      <h2>Bienvenido. Configuremos tu empresa</h2>
+      <p class="note">Este PC recibirá los datos de todas tus tiendas. Lo haces una sola vez.</p>
+      <div class="field">
+        <label for="empresa">Nombre de la empresa</label>
+        <input type="text" id="empresa" required autofocus placeholder="Farmacias Sol">
+        <span class="help">Escríbelo igual que en tu licencia de Traffiqui.</span>
+      </div>
+      <div class="field">
+        <label for="nombre">Tu nombre</label>
+        <input type="text" id="nombre" required autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="email">Tu correo</label>
+        <input type="email" id="email" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" required minlength="8" autocomplete="new-password">
+        <span class="help">Al menos 8 caracteres. Con ella entrarás al panel.</span>
+      </div>
+      <p class="login-error" id="setupError" role="alert" hidden></p>
+      <button class="btn primary login-btn" type="submit">Crear y entrar</button>
+    </form>
+  </main>
+  <script>
+    document.getElementById('setupForm').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const err = document.getElementById('setupError');
+      const v = id => document.getElementById(id).value;
+      err.hidden = true;
+      try {
+        const r = await fetch('/api/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ empresa: v('empresa'), nombre: v('nombre'), email: v('email'), password: v('password') }) });
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.detail || 'No se pudo guardar.');
+        location.href = '/sedes';
+      } catch (e) { err.textContent = e.message; err.hidden = false; }
+    });
+  </script>
+</body>
+</html>

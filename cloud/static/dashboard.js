@@ -90,7 +90,7 @@
         <td class="num"><b>${num(s.visits)}</b></td><td class="num">${num(s.checkout)}</td>
         <td class="num">${s.visits ? pct(s.checkout_rate) : '–'}</td><td class="num">${secs(s.avg_dwell)}</td>
         <td class="num">${slot(s.peak_hour)}</td><td class="num">${num(s.entries)}</td><td class="num">${num(s.max_occupancy)}</td></tr>`;
-    }).join('') : '<tr><td colspan="9" class="empty">Esta empresa todavía no tiene sedes.</td></tr>';
+    }).join('') : '<tr><td colspan="9" class="empty">Todavía no hay sedes. Créalas en <a href="/sedes">Sedes y usuarios</a>.</td></tr>';
     drawCharts(d, cmap);
   }
 
@@ -144,13 +144,14 @@
   async function init() {
     me = await api('/api/me');
     $('#userName').textContent = me.name;
+    $('#nav').hidden = me.role !== 'hq';
     if (me.role === 'admin') {
       const sel = $('#orgSelect');
       sel.hidden = false;
       sel.innerHTML = me.orgs.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
       orgId = me.orgs[0]?.id ?? null;
       sel.onchange = () => { orgId = Number(sel.value); load(); };
-      if (!orgId) $('#sitesTable').innerHTML = '<tr><td colspan="9" class="empty">Todavía no hay empresas. Créalas con python -m cloud.admin.</td></tr>';
+      if (!orgId) $('#sitesTable').innerHTML = '<tr><td colspan="9" class="empty">Todavía no hay empresas.</td></tr>';
     }
     document.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => {
       range = b.dataset.range;

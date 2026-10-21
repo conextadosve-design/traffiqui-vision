@@ -1,5 +1,9 @@
 # Traffiqui Vision · MVP de conteo y mapa de calor con webcam
 
+> **Instalar en una tienda o en la sede principal con `Traffiqui-Setup.exe`:** ver
+> [docs/INSTALACION.md](docs/INSTALACION.md). Este README explica la app de la tienda y cómo
+> trabajar con el código.
+
 Prototipo local de la parte de visión por computadora de **Traffiqui**, el SaaS de analítica de
 tráfico físico para retail. Con una sola cámara (tu webcam) detecta personas, sigue a cada una con un
 color propio, dibuja su recorrido con un rastro que se desvanece, cuenta entradas y salidas, mide
@@ -252,7 +256,8 @@ Configuración → **Sede principal**: pega la dirección del servidor central y
 `tqs_`) que te da el administrador al activar la sede. Desde ese momento la app envía cada 30 s sus números
 (personas, puertas, áreas, ocupación y mapa de calor del plano) al servidor, donde gerencia y marketing ven
 todas las sedes juntas. Nunca se envía video ni imágenes. Sin internet la tienda sigue funcionando igual y
-envía lo pendiente al volver. Cómo montar el servidor central: [docs/MULTISEDE.md](docs/MULTISEDE.md).
+envía lo pendiente al volver. Instalación de la sede principal y de las tiendas: [docs/INSTALACION.md](docs/INSTALACION.md);
+diseño: [docs/MULTISEDE.md](docs/MULTISEDE.md).
 
 ## 4. Qué significa cada métrica
 

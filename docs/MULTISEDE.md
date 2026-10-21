@@ -1,44 +1,53 @@
 # Multisede: diseño
 
 Una empresa con varias tiendas (sedes) y una **sede principal** (marketing y gerencia) que ve el
-consolidado de todas, el tiempo real de cada una y su registro completo. Cada sede nueva se paga aparte
-y la activa el administrador (Andrés) a mano.
+consolidado de todas, el tiempo real de cada una y su registro completo. Cada sede nueva se paga aparte.
 
 Decisiones tomadas:
+- **Todo local, nada publicado en internet** (primera etapa): un solo instalador `Traffiqui-Setup.exe`
+  con dos modos, *tienda* y *sede principal*. El servidor central es el **PC de la sede principal**.
+- **Conexión por Tailscale**: red privada cifrada entre las tiendas y la sede principal, sin abrir puertos
+  del router. Guía paso a paso: [INSTALACION.md](INSTALACION.md).
 - **Tiempo real = cifras y 3D**, nunca vídeo. De la tienda solo salen números y posiciones en el plano.
-- **Cobro manual**: el cliente paga (pago móvil, Zelle, Binance, transferencia) y el administrador activa la sede.
+- **Cobro por sede con licencias firmadas**: el cliente paga (pago móvil, Zelle, Binance, transferencia) y
+  Andrés le envía un código de licencia con el número de sedes (`cloud/licencia.py`). Como el servidor
+  está en el PC del cliente, el límite no puede ser un interruptor en ese PC: lo pone el código, que solo
+  se puede generar con la clave privada de Andrés.
 - **Reportes**: panel web siempre al día, correo automático y exportación a Excel.
 
 ## Arquitectura
 
 ```
- Sede A (PC tienda)          Sede B (PC tienda)
- app actual + agente  ──┐   app actual + agente ──┐
-                        │  HTTPS / WebSocket      │   (siempre sale de la tienda:
-                        ▼                         ▼    no hay que abrir puertos)
-               ┌──────────────────────────────────────┐
-               │  Traffiqui Cloud (servidor central)  │
-               │  FastAPI + PostgreSQL                │
-               │  · recibe datos y tiempo real        │
-               │  · usuarios, roles y sedes           │
-               │  · reportes, correo, Excel           │
-               └──────────────────────────────────────┘
+ Tienda A (Traffiqui, modo tienda)     Tienda B (Traffiqui, modo tienda)
+ cámaras + conteo + agente  ──┐        cámaras + conteo + agente ──┐
+                              │    Tailscale (red privada)          │
+                              ▼                                     ▼
+               ┌────────────────────────────────────────────────────┐
+               │  PC de la sede principal (Traffiqui, modo sede     │
+               │  principal): servidor central en el puerto 9000    │
+               │  FastAPI + SQLite (C:\ProgramData\Traffiqui)       │
+               │  · recibe datos · usuarios y sedes · licencia      │
+               └────────────────────────────────────────────────────┘
                         ▲
-                        │ navegador
-            Sede principal (marketing y gerencia)
+                        │ navegador (en ese PC o por Tailscale)
+            Gerencia y marketing
 ```
+
+El mismo código de `cloud/` sirve más adelante para un servidor propio en internet (con PostgreSQL),
+si algún día se quiere: no hay nada atado al PC de la sede principal.
 
 - **La app de cada tienda no cambia**: sigue contando y guardando en su SQLite, y funciona sin internet.
   Se le añade un **agente de sincronización** que envía los datos al servidor central.
 - **Si se corta internet**, el agente acumula y se pone al día al volver. No se pierde nada.
-- Es el mismo servidor que llevará las **licencias y actualizaciones** (ver `PENDIENTES.md`).
+- El arranque (`app/launcher.py`) elige el modo según `C:\ProgramData\Traffiqui\modo.json`, que escribe el
+  instalador; un icono en la bandeja abre el panel o cierra el programa.
 
 ## Quién ve qué
 
 | Rol | Ve | Puede |
 |---|---|---|
-| **Administrador** (Andrés) | Todas las empresas y sedes | Crear empresas, activar/suspender sedes, registrar pagos |
-| **Sede principal** (gerencia y marketing) | Todas las sedes de su empresa | Consolidado, tiempo real y registro de cada sede, reportes, Excel, pedir sedes nuevas |
+| **Administrador** (Andrés) | — | Emite los códigos de licencia (`python -m cloud.licencia emitir`) |
+| **Sede principal** (gerencia y marketing) | Todas las sedes de su empresa | Consolidado, crear / suspender sedes y sus claves (hasta lo que permita la licencia), usuarios |
 | **Encargado de sede** | Solo su sede | Tiempo real y registro de su sede |
 
 ## Datos que se sincronizan
@@ -65,63 +74,59 @@ Cada fila lleva sede + sesión + id local, así que reenviar un lote no duplica 
 
 ## Sedes y cobro
 
-1. La sede principal pide una sede nueva desde el panel → queda **pendiente de pago**.
-2. El cliente paga; el administrador registra el pago y **activa** la sede.
-3. Al activarla se genera una **clave de sede**; se pone en la app de esa tienda y empieza a enviar datos.
-4. El administrador puede **suspender** una sede: deja de recibir datos y desaparece de los reportes.
+1. El cliente paga las sedes que quiere; Andrés le envía un **código de licencia** (`TQ1.…`) con ese número.
+2. En el panel de la sede principal, *Sedes y usuarios → Licencia*: pega el código.
+3. Crea cada sede: queda **activa** y muestra su **clave** (`tqs_…`) una sola vez. Se pega en la app de esa tienda.
+4. Más sedes que la licencia: el panel no deja crearlas y muestra el contacto de Andrés. Aunque alguien
+   activara una sede por otra vía, el servidor rechaza los datos de las sedes que no entran en la licencia
+   (cuentan las primeras en activarse).
+5. **Suspender** una sede deja de aceptar sus datos y libera su cupo; **nueva clave** invalida la anterior.
+
+Sin licencia, cada empresa puede tener 1 sede (`FREE_SITES` en `cloud/licencia.py`).
 
 ## Fases
 
 1. ✅ **Servidor central + agente**: empresas, sedes, usuarios con contraseña, recepción de datos y
-   panel consolidado (ver "Cómo usarlo").
+   panel consolidado.
+1b. ✅ **Todo local con instalador**: modo tienda / sede principal, primer uso, gestión de sedes, usuarios y
+   licencias desde el panel, Tailscale, instalador de Windows generado por GitHub Actions
+   (`packaging/`, `.github/workflows/instalador-windows.yml`). Guía: [INSTALACION.md](INSTALACION.md).
 2. **Tiempo real y vista de cada sede**: en vivo, analítica y 3D de cualquier sede. Los datos ya
    llegan desde la fase 1 (recorridos, áreas, mapa de calor del plano): falta construir las vistas.
 3. **Reportes**: correo automático y Excel consolidado.
-4. **Panel de administrador**: alta de empresas, solicitudes de sede, pagos, activar/suspender.
-   Mientras tanto se hace con `python -m cloud.admin`.
 
-## Cómo usarlo (fase 1)
+## Desarrollo
 
-Código: `cloud/` (servidor) y `app/cloud_sync.py` (agente dentro de la app de la tienda).
-
-```bash
-pip install -r cloud/requirements.txt
-export TRAFFIQUI_CLOUD_DB=postgresql+psycopg://usuario:clave@host/traffiqui   # sin esto: SQLite en data/cloud.db
-python -m cloud.main --host 0.0.0.0 --port 9000      # detrás de HTTPS (Caddy o nginx)
-```
-
-En desarrollo, sin HTTPS: `TRAFFIQUI_COOKIE_SECURE=0 python -m cloud.main`. Para enseñarlo con datos
-inventados: `python -m cloud.demo` crea la empresa "Demo" con 4 sedes y 30 días de datos
-(usuario `demo@traffiqui.com`, contraseña `demo1234`).
-
-Alta de un cliente con la herramienta del administrador:
+Código: `cloud/` (servidor de la sede principal), `app/cloud_sync.py` (agente de la tienda) y
+`app/launcher.py` (arranque del programa instalado).
 
 ```bash
-python -m cloud.admin crear-empresa "Farmacias Sol"                  # → empresa 1
-python -m cloud.admin crear-sede 1 "Sede Chacao"                     # → sede 1, pendiente de pago
-python -m cloud.admin activar-sede 1 --pago "Pago móvil 21/10 ref 1234"   # → muestra la clave tqs_…
-python -m cloud.admin crear-usuario gerente@sol.com "Ana Pérez" hq --empresa 1
-python -m cloud.admin crear-usuario encargado@sol.com "Luis" site --empresa 1 --sede 1
-python -m cloud.admin suspender-sede 1      # deja de aceptar sus datos
-python -m cloud.admin nueva-clave 1         # si la clave se filtró: la anterior deja de valer
-python -m cloud.admin listar
+pip install -r requirements.txt -r cloud/requirements.txt
+python -m app.launcher --modo sede-principal --sin-bandeja     # http://localhost:9000
+python -m app.launcher --modo tienda --sin-bandeja             # http://localhost:8000
 ```
 
-La clave `tqs_…` se pega en la app de la tienda: Configuración → **Sede principal**.
+Con `TRAFFIQUI_DATA=carpeta` los datos van a esa carpeta en vez de `data/`. Para enseñarlo con datos
+inventados: `python -m cloud.demo` crea la empresa "Demo" con 4 sedes y 30 días de datos (usuario
+`demo@traffiqui.com`, contraseña `demo1234`).
+
+`python -m cloud.admin` (crear empresas, sedes, usuarios, claves) sigue sirviendo para pruebas o para un
+servidor propio con varias empresas; en el PC de un cliente todo se hace desde el panel.
 
 Qué hay en el panel (`/`): totales de todas las sedes (visitas, pasaron por caja, permanencia, hora
-punta, sedes en línea), tabla por sede con su estado (en línea / sin conexión desde hace… / pendiente
-de pago / suspendida) y gráficas de visitas por sede y por hora del día. Rangos: hoy, semana, mes y
-personalizado. El encargado de una sede solo ve la suya.
+punta, sedes en línea), tabla por sede con su estado (en línea / sin conexión desde hace… / suspendida)
+y gráficas de visitas por sede y por hora del día. Rangos: hoy, semana, mes y personalizado. El
+encargado de una sede solo ve la suya.
 
-Seguridad: contraseñas con scrypt; la sesión es una cookie `httponly` (solo HTTPS en producción) y en
-la base solo se guarda su hash; de la clave de sede también se guarda solo el hash. Pendiente antes de
-producción: límite de intentos de inicio de sesión y copias de seguridad de la base.
+Seguridad: contraseñas con scrypt; la sesión es una cookie `httponly` y en la base solo se guarda su
+hash; de la clave de sede también se guarda solo el hash. El primer uso (crear empresa y usuario) solo
+se acepta desde el propio PC. El puerto 9000 solo se abre a Tailscale y a la red local. Pendiente:
+límite de intentos de inicio de sesión y copias de seguridad automáticas de la base.
 
 ## Por decidir
 
-- **Alojamiento** del servidor: un VPS (Hetzner, DigitalOcean: ~5–12 USD/mes) o Railway/Render.
-- **Correo**: Resend o Brevo (tienen plan gratis para empezar) y un dominio propio.
+- **Correo** para los reportes automáticos (fase 3): desde el PC de la sede principal, con una cuenta
+  de correo de la empresa (SMTP) o un servicio como Resend / Brevo.
 - **Precio** de cada sede adicional (mensual o pago único).
 - ✅ **Nombre "Compradores"** en la app local: ahora "Pasaron por caja", como en el PDF. Los nombres
   internos (`buyers`, `is_buyer`, `buyer_seconds`) no cambian, para no romper bases ni datos existentes.

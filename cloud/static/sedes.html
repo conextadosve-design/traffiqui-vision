@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traffiqui · Sedes y usuarios</title>
+  <link rel="stylesheet" href="/vendor/styles.css">
+  <link rel="stylesheet" href="/static/cloud.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span>Traffiqui</span> Sede principal <small id="orgName"></small></div>
+    <nav class="tabs">
+      <a class="tab" href="/">Resumen</a>
+      <a class="tab" href="/sedes" aria-selected="true">Sedes y usuarios</a>
+    </nav>
+    <div class="status">
+      <span id="userName"></span>
+      <button class="btn ghost" id="logout">Salir</button>
+    </div>
+  </header>
+
+  <main class="manage">
+    <div class="card wide" id="connectCard">
+      <h3>Cómo se conectan las tiendas</h3>
+      <ol class="steps-list">
+        <li>Instala <b>Tailscale</b> en este PC y en el PC de cada tienda, con la misma cuenta
+          (<a href="https://tailscale.com/download" target="_blank" rel="noopener">tailscale.com/download</a>).</li>
+        <li>Crea la sede aquí abajo y copia su <b>clave</b>.</li>
+        <li>En la tienda, abre Traffiqui → Configuración → <b>Sede principal</b>, pega la dirección y la clave.</li>
+      </ol>
+      <div class="field">
+        <span class="label">Dirección de este PC para las tiendas</span>
+        <div id="addresses" class="addr-list"></div>
+      </div>
+    </div>
+
+    <div class="manage-grid">
+      <div class="card">
+        <h3>Sedes <small id="licenseSummary"></small></h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Sede</th><th>Estado</th><th>Clave</th><th class="num">Acciones</th></tr></thead>
+            <tbody id="sitesList"></tbody>
+          </table>
+        </div>
+        <form class="inline-form" id="siteForm">
+          <input type="text" id="siteName" placeholder="Nombre de la nueva sede (p. ej. Sede Chacao)" required>
+          <button class="btn primary" type="submit">Agregar sede</button>
+        </form>
+        <div class="key-box" id="keyBox" hidden>
+          <b id="keyTitle">Clave de la sede</b>
+          <p class="note">Cópiala ahora y pégala en la app de esa tienda. Por seguridad no se vuelve a mostrar
+            (si se pierde, genera una nueva).</p>
+          <div class="key-row"><code id="keyValue"></code><button class="btn" id="keyCopy" type="button">Copiar</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Licencia</h3>
+        <p id="licenseText"></p>
+        <form id="licenseForm">
+          <div class="field">
+            <label for="licenseCode">Código de licencia nuevo</label>
+            <textarea id="licenseCode" rows="3" placeholder="TQ1.…" required></textarea>
+            <span class="help" id="licenseHelp"></span>
+          </div>
+          <button class="btn" type="submit">Guardar licencia</button>
+        </form>
+      </div>
+
+      <div class="card wide">
+        <h3>Usuarios <small>quién puede entrar a este panel</small></h3>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Ve</th><th>Estado</th><th class="num"></th></tr></thead>
+            <tbody id="usersList"></tbody>
+          </table>
+        </div>
+        <form class="inline-form wrap" id="userForm">
+          <input type="text" id="uName" placeholder="Nombre" required>
+          <input type="email" id="uEmail" placeholder="Correo" required>
+          <input type="password" id="uPass" placeholder="Contraseña (mín. 8)" minlength="8" required>
+          <select id="uRole" aria-label="Qué ve">
+            <option value="hq">Todas las sedes (gerencia / marketing)</option>
+            <option value="site">Solo una sede (encargado)</option>
+          </select>
+          <select id="uSite" aria-label="Sede" hidden></select>
+          <button class="btn primary" type="submit">Agregar usuario</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/static/sedes.js"></script>
+</body>
+</html>

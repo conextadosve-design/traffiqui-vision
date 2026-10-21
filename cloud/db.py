@@ -17,7 +17,7 @@ from __future__ import annotations
 import time
 
 from sqlalchemy import (Column, Float, ForeignKey, Index, Integer, LargeBinary, MetaData, String, Table, Text,
-                        UniqueConstraint, create_engine, event)
+                        UniqueConstraint, create_engine, event, inspect, text)
 from sqlalchemy.engine import Engine
 
 from cloud import config
@@ -29,6 +29,7 @@ organizations = Table(
     Column("id", Integer, primary_key=True),
     Column("name", String(200), nullable=False),
     Column("timezone", String(64), nullable=False, default=config.DEFAULT_TIMEZONE),
+    Column("license_code", Text),   # código firmado por Traffiqui: cuántas sedes puede tener activas
     Column("created_at", Float, nullable=False, default=time.time),
 )
 
@@ -175,4 +176,17 @@ def make_engine(url: str | None = None) -> Engine:
             conn.execute("PRAGMA journal_mode = WAL")
             conn.execute("PRAGMA foreign_keys = ON")
     metadata.create_all(engine)
+    _add_missing_columns(engine)
     return engine
+
+
+def _add_missing_columns(engine: Engine) -> None:
+    """Columnas nuevas en tablas que ya existían (bases creadas por una versión anterior)."""
+    insp = inspect(engine)
+    with engine.begin() as conn:
+        for table in metadata.sorted_tables:
+            have = {c["name"] for c in insp.get_columns(table.name)}
+            for col in table.columns:
+                if col.name not in have and col.nullable:
+                    conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN {col.name} '
+                                      f'{col.type.compile(engine.dialect)}'))
