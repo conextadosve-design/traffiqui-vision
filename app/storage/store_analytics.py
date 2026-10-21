@@ -120,7 +120,7 @@ def grid_payload(grid: np.ndarray, cell_m: float, width: float, depth: float, si
             "total": float(grid.sum()), "values": [round(float(v), 3) for v in g.flatten()]}
 
 
-# ---- compradores vs. no compradores ---------------------------------------------------------
+# ---- pasaron por caja vs. no pasaron ---------------------------------------------------------
 def _group(rows: list, total: int) -> dict:
     ended = [r for r in rows if r["duration"] is not None]
     durations = [r["duration"] for r in ended]
@@ -175,7 +175,7 @@ def buyers_query(db: Database, t0: float, t1: float, areas: list[dict], buyer_se
     # pasillos que visita cada grupo (penetración dentro del grupo)
     names = {a["id"]: a["name"] for a in areas}
     kinds = {a["id"]: a.get("kind", "pasillo") for a in areas}
-    seen = defaultdict(lambda: [0, 0])  # area -> [compradores, no compradores]
+    seen = defaultdict(lambda: [0, 0])  # area -> [pasaron por caja, no pasaron]
     for v in visits:
         key = (v["session_id"], v["global_id"])
         if key not in is_buyer:
@@ -203,7 +203,7 @@ def buyers_query(db: Database, t0: float, t1: float, areas: list[dict], buyer_se
         door_names[r["door_id"]] = r["door_name"]
         (din if r["direction"] == "in" else dout)[bucket_start(r["ts"], 3600)] += 1
 
-    # cada caja por separado: su zona de cliente, quién pasó, cuánto esperó y cuántas compras se le atribuyen
+    # cada caja por separado: su zona de cliente, quién pasó, cuánto esperó y cuántas personas se le asignan
     attributed = Counter(r["checkout_area_id"] for r in buyers if r["checkout_area_id"])
     per_caja: dict[str, dict] = {aid: {"people": 0, "secs": [], "name": names.get(aid, aid)} for aid in caja_ids}
     for v in caja_visits:
@@ -269,7 +269,7 @@ def hourly_query(db: Database, t0: float, t1: float, areas: list[dict], area_id:
     """Personas por día y hora (0–23) para la tienda o un área, y la hora pico de cada área.
 
     people = personas distintas que entraron (a la tienda o al área) en esa hora;
-    buyers = solo las que terminaron siendo compradoras. El personal nunca cuenta.
+    buyers = solo las que terminaron pasando por caja. El personal nunca cuenta.
     """
     days = day_list(t0, t1)
     t0 = datetime.strptime(days[0]["date"], "%Y-%m-%d").timestamp() if days else t0

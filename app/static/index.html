@@ -12,7 +12,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" data-view="live" aria-selected="true">En vivo</button>
       <button class="tab" role="tab" data-view="analytics" aria-selected="false">Analítica</button>
-      <button class="tab" role="tab" data-view="buyers" aria-selected="false">Compradores</button>
+      <button class="tab" role="tab" data-view="buyers" aria-selected="false">Pasaron por caja</button>
       <button class="tab" role="tab" data-view="store" aria-selected="false">Tienda 3D</button>
       <button class="tab" role="tab" data-view="plan" aria-selected="false">Plano</button>
       <button class="tab" role="tab" data-view="settings" aria-selected="false">Configuración</button>
@@ -70,8 +70,8 @@
                 <div class="sub" id="kMedian">Mediana: –</div></div>
               <div class="kpi"><div class="label">FPS</div><div class="value" id="kFps">–</div>
                 <div class="sub" id="kInfer">–</div></div>
-              <div class="kpi in"><div class="label">Compradores hoy</div><div class="value" id="kBuyers">–</div>
-                <div class="sub" id="kConv">Conversión: –</div></div>
+              <div class="kpi in"><div class="label">Pasaron por caja hoy</div><div class="value" id="kBuyers">–</div>
+                <div class="sub" id="kConv">% de las visitas: –</div></div>
               <div class="kpi"><div class="label">Puertas (hoy, sesión)</div><div class="value" id="kDoors">–</div>
                 <div class="sub" id="kDoorsSub">entradas / salidas</div></div>
             </div>
@@ -167,7 +167,7 @@
             <label>Área <select id="hArea"><option value="store">Toda la tienda</option></select></label>
             <div class="seg" role="group" aria-label="Métrica">
               <button data-hmetric="people" aria-pressed="true">Personas</button>
-              <button data-hmetric="buyers" aria-pressed="false">Compradores</button>
+              <button data-hmetric="buyers" aria-pressed="false">Pasaron por caja</button>
             </div>
             <div class="seg" role="group" aria-label="Vista">
               <button data-hview="days" aria-pressed="true">Cada día</button>
@@ -201,7 +201,7 @@
       </div>
     </section>
 
-    <!-- ================= COMPRADORES ================= -->
+    <!-- ================= PASARON POR CAJA ================= -->
     <section class="view" id="view-buyers" hidden>
       <div class="filters">
         <div class="seg" role="group" aria-label="Rango">
@@ -221,16 +221,16 @@
       </div>
       <div class="alert info" id="bNoCheckout" hidden><div><b>Falta la zona de cajas.</b>
         <p>En la pestaña Plano dibuja un área, cámbiale el tipo a "Zona de cajas" y asígnale la cámara que la ve.
-          Quien acumule ahí el tiempo configurado cuenta como comprador.</p></div></div>
+          Quien acumule ahí el tiempo configurado cuenta como "pasó por caja".</p></div></div>
 
       <div class="buyers-head">
         <div class="card conv">
-          <div class="label">Tasa de conversión</div>
+          <div class="label">% que pasó por caja</div>
           <div class="big" id="bConv">–</div>
           <div class="note" id="bConvSub"></div>
         </div>
-        <div class="card group buyers"><div class="label">Compradores</div><div class="big" id="bBuy">–</div><div class="note" id="bBuySub"></div></div>
-        <div class="card group non"><div class="label">No compradores <small>(solo transitaron)</small></div><div class="big" id="bNon">–</div><div class="note" id="bNonSub"></div></div>
+        <div class="card group buyers"><div class="label">Pasaron por caja</div><div class="big" id="bBuy">–</div><div class="note" id="bBuySub"></div></div>
+        <div class="card group non"><div class="label">No pasaron por caja <small>(solo transitaron)</small></div><div class="big" id="bNon">–</div><div class="note" id="bNonSub"></div></div>
         <div class="card group total"><div class="label">Total de personas</div><div class="big" id="bTot">–</div><div class="note" id="bTotSub"></div></div>
       </div>
 
@@ -239,36 +239,36 @@
           <h3>Estadísticas por grupo</h3>
           <div class="table-scroll">
             <table class="compare">
-              <thead><tr><th>Métrica</th><th class="num">Compradores</th><th class="num">No compradores</th><th class="num">Total</th></tr></thead>
+              <thead><tr><th>Métrica</th><th class="num">Pasaron por caja</th><th class="num">No pasaron</th><th class="num">Total</th></tr></thead>
               <tbody id="bTable"></tbody>
             </table>
           </div>
         </div>
         <div class="card">
-          <h3 id="bHourTitle">Compradores y no compradores por hora</h3>
-          <div class="legend"><span><i style="background:var(--chart-1)"></i>Compradores</span><span><i style="background:var(--chart-2)"></i>No compradores</span></div>
-          <div class="chart-box"><canvas id="chBuyHour" aria-label="Compradores y no compradores por hora"></canvas></div>
+          <h3 id="bHourTitle">Pasaron y no pasaron por caja, por hora</h3>
+          <div class="legend"><span><i style="background:var(--chart-1)"></i>Pasaron por caja</span><span><i style="background:var(--chart-2)"></i>No pasaron</span></div>
+          <div class="chart-box"><canvas id="chBuyHour" aria-label="Pasaron y no pasaron por caja, por hora"></canvas></div>
         </div>
         <div class="card">
           <h3>Permanencia en la tienda por grupo</h3>
-          <div class="legend"><span><i style="background:var(--chart-1)"></i>Compradores</span><span><i style="background:var(--chart-2)"></i>No compradores</span></div>
+          <div class="legend"><span><i style="background:var(--chart-1)"></i>Pasaron por caja</span><span><i style="background:var(--chart-2)"></i>No pasaron</span></div>
           <div class="chart-box"><canvas id="chBuyDwell" aria-label="Distribución de permanencia por grupo"></canvas></div>
         </div>
         <div class="card wide">
           <h3>¿Qué pasillos visita cada grupo? <small>% de las personas de cada grupo que pasó por el área</small></h3>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Área</th><th class="num">Compradores</th><th class="num">No compradores</th><th class="num">Diferencia</th></tr></thead>
+              <thead><tr><th>Área</th><th class="num">Pasaron por caja</th><th class="num">No pasaron</th><th class="num">Diferencia</th></tr></thead>
               <tbody id="bAreas"></tbody>
             </table>
           </div>
-          <p class="note">Una diferencia positiva grande indica un pasillo que recorren sobre todo quienes terminan comprando.</p>
+          <p class="note">Una diferencia positiva grande indica un pasillo que recorren sobre todo quienes terminan pasando por caja.</p>
         </div>
         <div class="card wide">
-          <h3>Cajas <small>cada caja por separado · la compra se atribuye a la caja donde el cliente más tiempo estuvo</small></h3>
+          <h3>Cajas <small>cada caja por separado · cada persona se asigna a la caja donde más tiempo estuvo</small></h3>
           <div class="table-scroll">
             <table>
-              <thead><tr><th>Caja (zona del cliente)</th><th class="num">En fila ahora</th><th class="num">Personas que pasaron</th><th class="num">Compras</th><th class="num">% de las compras</th><th class="num">Tiempo promedio en caja</th></tr></thead>
+              <thead><tr><th>Caja (zona del cliente)</th><th class="num">En fila ahora</th><th class="num">Entraron a la zona</th><th class="num">Pasaron por esta caja</th><th class="num">% del total en caja</th><th class="num">Tiempo promedio en caja</th></tr></thead>
               <tbody id="bCheckouts"></tbody>
             </table>
           </div>
@@ -288,8 +288,8 @@
           <div class="people" id="bLive"><span class="empty">Nadie en la tienda.</span></div>
         </div>
       </div>
-      <p class="note">Comprador exitoso = acumuló al menos <b id="bSecs">20</b> s en zonas de cajas. No compradores = el resto de las personas que
-        entraron (solo transitaron o miraron sin pasar por caja). Quienes siguen en la tienda pueden cambiar de grupo al pasar por caja.</p>
+      <p class="note">Pasó por caja = acumuló al menos <b id="bSecs">20</b> s en zonas de cajas. No es lo mismo que una compra: el sistema no ve los tickets.
+        No pasaron = el resto de las personas que entraron (solo transitaron o miraron). Quienes siguen en la tienda pueden cambiar de grupo al pasar por caja.</p>
     </section>
 
     <!-- ================= TIENDA 3D ================= -->
@@ -475,7 +475,7 @@
             <input type="range" id="stop" min="1" max="120" step="1" data-cfg-range="stop_seconds" data-unit=" s">
           </div>
           <div class="field">
-            <label for="buyerSecs">Tiempo en zona de cajas para "comprador exitoso" <output data-for="buyer_seconds"></output></label>
+            <label for="buyerSecs">Tiempo en zona de cajas para contar como "pasó por caja" <output data-for="buyer_seconds"></output></label>
             <input type="range" id="buyerSecs" min="5" max="180" step="5" data-cfg-range="buyer_seconds" data-unit=" s">
             <span class="help">Se suma todo el tiempo que la persona pasa en las zonas del cliente de las cajas del plano.</span>
           </div>
@@ -559,6 +559,33 @@
             <span class="help">Los cambios se guardan solos y se aplican sin reiniciar.</span>
           </div>
         </div>
+
+        <div class="card" id="cloudCard">
+          <h2>Sede principal <small>multisede</small></h2>
+          <p class="help">Conecta esta tienda con el servidor central para que gerencia y marketing vean sus datos junto a
+            los de las demás sedes. Solo se envían números y posiciones en el plano, nunca video ni imágenes. Si se corta
+            internet, la tienda sigue contando y envía lo pendiente al volver.</p>
+          <div class="field">
+            <span class="label">Estado</span>
+            <div class="row"><span class="pill" id="cloudPill">Sin conectar</span><span class="help" id="cloudInfo"></span></div>
+          </div>
+          <form id="cloudForm">
+            <div class="field">
+              <label for="cloudUrl">Dirección del servidor</label>
+              <input type="url" id="cloudUrl" placeholder="https://panel.traffiqui.com" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="cloudKey">Clave de la sede</label>
+              <input type="password" id="cloudKey" placeholder="tqs_…" autocomplete="off">
+              <span class="help">Te la da Traffiqui al activar la sede. Se guarda solo en este equipo.</span>
+            </div>
+            <div class="row">
+              <button class="btn primary" type="submit" id="cloudConnect">Conectar</button>
+              <button class="btn" type="button" id="cloudSync" hidden>Enviar ahora</button>
+              <button class="btn danger" type="button" id="cloudOff" hidden>Desconectar</button>
+            </div>
+          </form>
+        </div>
       </div>
     </section>
   </main>
@@ -635,6 +662,7 @@
   <script src="/static/cameras.js"></script>
   <script src="/static/buyers.js"></script>
   <script src="/static/hourly.js"></script>
+  <script src="/static/cloud.js"></script>
   <script type="module" src="/static/store3d.js"></script>
 </body>
 </html>

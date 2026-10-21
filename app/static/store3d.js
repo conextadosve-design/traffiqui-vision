@@ -240,7 +240,7 @@ function updatePeople() {
     }
     o.target.set(p.x, 0.77, p.y);
     const tag = o.mesh.children[0]?.element;
-    if (tag) tag.textContent = p.staff ? `ID ${p.gid} · personal` : p.buyer ? `ID ${p.gid} · comprador` : `ID ${p.gid}`;
+    if (tag) tag.textContent = p.staff ? `ID ${p.gid} · personal` : p.buyer ? `ID ${p.gid} · pasó por caja` : `ID ${p.gid}`;
     o.mesh.material.opacity = p.staff ? 0.35 : 1;
     o.mesh.material.transparent = !!p.staff;
   }

@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.cloud_sync import CloudError, CloudSync
 from app.config import DATA_DIR, DEFAULTS, Settings
 from app.storage import analytics
 from app.storage.analytics import local_midnight
@@ -63,6 +64,7 @@ class Runtime:
         self.settings: Settings | None = None
         self.db: Database | None = None
         self.recorder: Recorder | None = None
+        self.cloud: CloudSync | None = None
         self.fusion: StoreFusion | None = None
         self.cams: dict[str, CameraRuntime] = {}
         self.primary_id = "cam1"
@@ -110,6 +112,8 @@ class Runtime:
         primary.request_reference()
         self.recorder = Recorder(self.db, primary.metrics, fusion=self.fusion)
         self.recorder.start()
+        self.cloud = CloudSync(self.db, floorplan=lambda: self.settings.get("floorplan"))
+        self.cloud.start()
 
     def _start_cam(self, cam: dict) -> None:
         primary = cam["id"] == self.primary_id
@@ -153,6 +157,8 @@ class Runtime:
             self.fusion.finish_all(time.time())
         if self.recorder:
             self.recorder.stop()
+        if self.cloud:
+            self.cloud.stop()  # lo que falte se envía al volver a abrir la app
         for cr in self.cams.values():
             cr.capture.stop()
             cr.capture.join(timeout=5)
@@ -163,7 +169,7 @@ class Runtime:
         return self.today_counts()[0]
 
     def today_counts(self) -> tuple[int, int]:
-        """(personas únicas hoy, compradores hoy), con caché de 2 s."""
+        """(personas únicas hoy, pasaron por caja hoy), con caché de 2 s."""
         at, counts = self._today_cache
         if time.time() - at > 2.0 or not isinstance(counts, tuple):
             midnight = local_midnight(time.time())
@@ -310,7 +316,7 @@ NUMERIC_RANGES = {  # clave: (mínimo, máximo, nombre para el mensaje)
     "camera_index": (0, 9, "El índice de cámara"),
     "reid_reentry_s": (0, 300, "La ventana de re-entrada"),
     "reid_handoff_s": (0, 120, "La ventana de traspaso entre cámaras"),
-    "buyer_seconds": (5, 600, "El tiempo en cajas para contar como comprador"),
+    "buyer_seconds": (5, 600, "El tiempo en cajas para contar como \"pasó por caja\""),
     "staff_hours": (0, 24, "Las horas para considerar a alguien personal"),
     "staff_zone_seconds": (1, 600, "El tiempo en zona de personal"),
 }
@@ -709,11 +715,40 @@ def _buyers(range_: str, start, end) -> dict:
 
 def _hourly(range_: str, start, end, area: str = "store", metric: str = "people") -> dict:
     if metric not in ("people", "buyers"):
-        raise HTTPException(400, "La métrica debe ser personas o compradores.")
+        raise HTTPException(400, "La métrica debe ser personas o pasaron por caja.")
     t0, t1 = _range(range_, start, end)
     runtime.db.flush(timeout=2)
     areas = [e for e in runtime.settings.get("floorplan")["elements"] if e["type"] == "area"]
     return hourly_query(runtime.db, t0, t1, areas, area, metric)
+
+
+
+# ---- multisede: conexión con el servidor central ------------------------------------------
+@app.get("/api/cloud")
+def cloud_status():
+    return runtime.cloud.status()
+
+
+@app.put("/api/cloud")
+async def cloud_connect(request: Request):
+    body = await request.json()
+    try:
+        status = await asyncio.to_thread(runtime.cloud.connect, str(body.get("url", "")), str(body.get("site_key", "")))
+    except CloudError as e:
+        raise HTTPException(400, str(e)) from e
+    return status
+
+
+@app.delete("/api/cloud")
+def cloud_disconnect():
+    runtime.cloud.disconnect()
+    return runtime.cloud.status()
+
+
+@app.post("/api/cloud/sync")
+def cloud_sync_now():
+    runtime.cloud.sync_now()
+    return {"ok": True}
 
 
 @app.get("/api/store/hourly")

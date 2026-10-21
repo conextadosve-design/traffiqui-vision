@@ -34,7 +34,7 @@
 
   function render() {
     const d = S.data; if (!d) return;
-    const who = S.metric === 'buyers' ? 'compradores' : 'personas';
+    const who = S.metric === 'buyers' ? 'personas que pasaron por caja' : 'personas';
     const s = d.selected;
     $('#hPeak').innerHTML = s.peak_hour === null
       ? `Sin ${who} registrados en <b>${esc(d.area_name)}</b> para este rango.`

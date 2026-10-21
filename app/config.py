@@ -27,7 +27,7 @@ DEFAULTS: dict = {
     "line": None,          # {"a": [x, y], "b": [x, y], "inverted": false}
     "zones": [],           # [{"id": "z1", "name": "Caja", "points": [[x, y], ...]}]
     "stop_seconds": 10.0,  # permanencia mínima en zona para "se detuvo"
-    "buyer_seconds": 20.0,  # segundos en zonas de cajas para contar como "comprador exitoso"
+    "buyer_seconds": 20.0,  # segundos en zonas de cajas para contar como "pasó por caja"
     "staff_hours": 4.0,     # quien supere estas horas en el sistema es personal (0 = desactivado)
     "staff_zone_seconds": 15.0,  # segundos en una "zona de personal" para marcar a alguien como personal
     # mapa de calor

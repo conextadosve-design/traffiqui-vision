@@ -175,6 +175,16 @@ CREATE TABLE IF NOT EXISTS store_door_events (
     ts          REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_store_door_events_ts ON store_door_events(ts);
+-- ---- multisede: conexión con el servidor central (una sola fila) ----
+CREATE TABLE IF NOT EXISTS cloud_link (
+    id          INTEGER PRIMARY KEY CHECK (id = 1),
+    url         TEXT,
+    site_key    TEXT,             -- clave de la sede; nunca sale por la API local
+    db_uid      TEXT NOT NULL,    -- identifica esta base en el servidor (no cambia al reconectar)
+    site_name   TEXT,
+    org_name    TEXT,
+    cursors     TEXT NOT NULL DEFAULT '{}'   -- hasta dónde se envió cada tabla
+);
 """
 
 # columnas agregadas después de la primera versión (se crean si faltan en una base existente)
@@ -185,8 +195,9 @@ MIGRATIONS = {
         "stopped_any": "INTEGER NOT NULL DEFAULT 0",       # se detuvo en alguna área
         "is_staff": "INTEGER NOT NULL DEFAULT 0",          # personal: excluido de las estadísticas de clientes
         "staff_reason": "TEXT",
-        "checkout_area_id": "TEXT",                        # caja donde se le atribuye la compra
+        "checkout_area_id": "TEXT",                        # caja donde más tiempo estuvo (a la que se asigna)
         "checkout_area": "TEXT",
+        "changed_at": "REAL NOT NULL DEFAULT 0",          # última escritura: la sincronización envía lo cambiado
     },
 }
 
@@ -349,23 +360,25 @@ class Database:
                          (sid, d["track_id"], d["zone_id"], d["zone"], d["enter"], d["exit"], d["duration"]))
         # ---- eventos de la fusión (tienda completa) ----
         elif kind == "global_start":
-            self.enqueue("INSERT OR IGNORE INTO global_tracks (session_id, global_id, first_seen, color) VALUES (?, ?, ?, ?)",
-                         (sid, d["global_id"], d["first_seen"], d.get("color")))
+            self.enqueue("INSERT OR IGNORE INTO global_tracks (session_id, global_id, first_seen, color, changed_at) "
+                         "VALUES (?, ?, ?, ?, ?)", (sid, d["global_id"], d["first_seen"], d.get("color"), time.time()))
         elif kind == "global_end":
             self.enqueue("UPDATE global_tracks SET last_seen = ?, duration = ?, cameras_json = ?, areas_json = ?, "
                          "is_buyer = ?, checkout_seconds = ?, stopped_any = ?, is_staff = ?, staff_reason = ?, "
-                         "checkout_area_id = ?, checkout_area = ? WHERE session_id = ? AND global_id = ?",
+                         "checkout_area_id = ?, checkout_area = ?, changed_at = ? WHERE session_id = ? AND global_id = ?",
                          (d["last_seen"], d["duration"], json.dumps(d["cameras"]),
                           json.dumps(d["areas"], ensure_ascii=False), int(bool(d.get("buyer"))),
                           d.get("checkout_seconds", 0), int(bool(d.get("stopped"))), int(bool(d.get("staff"))),
-                          d.get("staff_reason"), d.get("checkout_area_id"), d.get("checkout_area"), sid, d["global_id"]))
+                          d.get("staff_reason"), d.get("checkout_area_id"), d.get("checkout_area"), time.time(),
+                          sid, d["global_id"]))
         elif kind == "global_buyer":
             self.enqueue("UPDATE global_tracks SET is_buyer = 1, checkout_seconds = MAX(checkout_seconds, ?), "
-                         "checkout_area_id = ?, checkout_area = ? WHERE session_id = ? AND global_id = ?",
-                         (d["checkout_seconds"], d.get("checkout_area_id"), d.get("checkout_area"), sid, d["global_id"]))
+                         "checkout_area_id = ?, checkout_area = ?, changed_at = ? WHERE session_id = ? AND global_id = ?",
+                         (d["checkout_seconds"], d.get("checkout_area_id"), d.get("checkout_area"), time.time(),
+                          sid, d["global_id"]))
         elif kind == "global_staff":
-            self.enqueue("UPDATE global_tracks SET is_staff = 1, is_buyer = 0, staff_reason = ? "
-                         "WHERE session_id = ? AND global_id = ?", (d["reason"], sid, d["global_id"]))
+            self.enqueue("UPDATE global_tracks SET is_staff = 1, is_buyer = 0, staff_reason = ?, changed_at = ? "
+                         "WHERE session_id = ? AND global_id = ?", (d["reason"], time.time(), sid, d["global_id"]))
         elif kind == "door_event":
             self.enqueue("INSERT INTO store_door_events (session_id, global_id, door_id, door_name, direction, ts) "
                          "VALUES (?, ?, ?, ?, ?, ?)",

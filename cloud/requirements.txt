@@ -1,0 +1,7 @@
+# Servidor central (Traffiqui Cloud). Se instala en el servidor, no en el PC de la tienda.
+fastapi==0.146.0
+starlette==1.9.0
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.6
+# En producción, con PostgreSQL:
+# psycopg[binary]==3.2.3

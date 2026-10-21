@@ -1,4 +1,4 @@
-/* Traffiqui Vision · compradores vs. no compradores */
+/* Traffiqui Vision · pasaron por caja vs. no pasaron */
 'use strict';
 
 (() => {
@@ -103,12 +103,12 @@
     const long = d.range.end - d.range.start > 36 * 3600;
     const series = long ? d.by_day.map(x => ({ label: x.label, buyers: x.buyers, non_buyers: x.non_buyers }))
       : hours.map(h => ({ label: hhmm(h.t), buyers: h.buyers, non_buyers: h.non_buyers }));
-    $('#bHourTitle').textContent = long ? 'Compradores y no compradores por día' : 'Compradores y no compradores por hora';
+    $('#bHourTitle').textContent = long ? 'Pasaron y no pasaron por caja, por día' : 'Pasaron y no pasaron por caja, por hora';
     const sets = {
-      chBuyHour: { labels: series.map(s => s.label), datasets: [bar('Compradores', series.map(s => s.buyers), th.c1), bar('No compradores', series.map(s => s.non_buyers), th.c2)] },
+      chBuyHour: { labels: series.map(s => s.label), datasets: [bar('Pasaron por caja', series.map(s => s.buyers), th.c1), bar('No pasaron', series.map(s => s.non_buyers), th.c2)] },
       chBuyDwell: { labels: Object.keys(d.groups.total.dwell_buckets), datasets: [
-        bar('Compradores', Object.values(d.groups.buyers.dwell_buckets), th.c1),
-        bar('No compradores', Object.values(d.groups.non_buyers.dwell_buckets), th.c2)] },
+        bar('Pasaron por caja', Object.values(d.groups.buyers.dwell_buckets), th.c1),
+        bar('No pasaron', Object.values(d.groups.non_buyers.dwell_buckets), th.c2)] },
     };
     for (const [id, data] of Object.entries(sets)) {
       if (charts[id]) { charts[id].data = data; charts[id].options = base; charts[id].update(); }
@@ -118,7 +118,7 @@
 
   function renderLive(m) {
     const people = (m.store?.people || []).filter(p => p.confirmed);
-    const status = p => p.staff ? ['staff', 'Personal'] : p.buyer ? ['ok', 'Comprador'] : p.checkout_s > 0 ? ['', `En caja ${Math.round(p.checkout_s)} s`] : ['', 'Transitando'];
+    const status = p => p.staff ? ['staff', 'Personal'] : p.buyer ? ['ok', 'Pasó por caja'] : p.checkout_s > 0 ? ['', `En caja ${Math.round(p.checkout_s)} s`] : ['', 'Transitando'];
     $('#bLive').innerHTML = people.length ? people.map(p => { const [cls, txt] = status(p); return `
       <span class="chip"><span class="dot" style="background:${esc(p.color)}"></span>ID ${p.gid}
         <span class="badge ${cls}">${txt}</span></span>`; }).join('')

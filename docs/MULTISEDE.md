@@ -72,15 +72,56 @@ Cada fila lleva sede + sesión + id local, así que reenviar un lote no duplica 
 
 ## Fases
 
-1. **Servidor central + agente**: empresas, sedes, usuarios con contraseña, recepción de datos y
-   panel consolidado básico.
-2. **Tiempo real y vista de cada sede**: en vivo, analítica y 3D de cualquier sede.
+1. ✅ **Servidor central + agente**: empresas, sedes, usuarios con contraseña, recepción de datos y
+   panel consolidado (ver "Cómo usarlo").
+2. **Tiempo real y vista de cada sede**: en vivo, analítica y 3D de cualquier sede. Los datos ya
+   llegan desde la fase 1 (recorridos, áreas, mapa de calor del plano): falta construir las vistas.
 3. **Reportes**: correo automático y Excel consolidado.
 4. **Panel de administrador**: alta de empresas, solicitudes de sede, pagos, activar/suspender.
+   Mientras tanto se hace con `python -m cloud.admin`.
+
+## Cómo usarlo (fase 1)
+
+Código: `cloud/` (servidor) y `app/cloud_sync.py` (agente dentro de la app de la tienda).
+
+```bash
+pip install -r cloud/requirements.txt
+export TRAFFIQUI_CLOUD_DB=postgresql+psycopg://usuario:clave@host/traffiqui   # sin esto: SQLite en data/cloud.db
+python -m cloud.main --host 0.0.0.0 --port 9000      # detrás de HTTPS (Caddy o nginx)
+```
+
+En desarrollo, sin HTTPS: `TRAFFIQUI_COOKIE_SECURE=0 python -m cloud.main`. Para enseñarlo con datos
+inventados: `python -m cloud.demo` crea la empresa "Demo" con 4 sedes y 30 días de datos
+(usuario `demo@traffiqui.com`, contraseña `demo1234`).
+
+Alta de un cliente con la herramienta del administrador:
+
+```bash
+python -m cloud.admin crear-empresa "Farmacias Sol"                  # → empresa 1
+python -m cloud.admin crear-sede 1 "Sede Chacao"                     # → sede 1, pendiente de pago
+python -m cloud.admin activar-sede 1 --pago "Pago móvil 21/10 ref 1234"   # → muestra la clave tqs_…
+python -m cloud.admin crear-usuario gerente@sol.com "Ana Pérez" hq --empresa 1
+python -m cloud.admin crear-usuario encargado@sol.com "Luis" site --empresa 1 --sede 1
+python -m cloud.admin suspender-sede 1      # deja de aceptar sus datos
+python -m cloud.admin nueva-clave 1         # si la clave se filtró: la anterior deja de valer
+python -m cloud.admin listar
+```
+
+La clave `tqs_…` se pega en la app de la tienda: Configuración → **Sede principal**.
+
+Qué hay en el panel (`/`): totales de todas las sedes (visitas, pasaron por caja, permanencia, hora
+punta, sedes en línea), tabla por sede con su estado (en línea / sin conexión desde hace… / pendiente
+de pago / suspendida) y gráficas de visitas por sede y por hora del día. Rangos: hoy, semana, mes y
+personalizado. El encargado de una sede solo ve la suya.
+
+Seguridad: contraseñas con scrypt; la sesión es una cookie `httponly` (solo HTTPS en producción) y en
+la base solo se guarda su hash; de la clave de sede también se guarda solo el hash. Pendiente antes de
+producción: límite de intentos de inicio de sesión y copias de seguridad de la base.
 
 ## Por decidir
 
 - **Alojamiento** del servidor: un VPS (Hetzner, DigitalOcean: ~5–12 USD/mes) o Railway/Render.
 - **Correo**: Resend o Brevo (tienen plan gratis para empezar) y un dominio propio.
 - **Precio** de cada sede adicional (mensual o pago único).
-- **Nombre "Compradores"** en la app local: cambiarlo a "Pasaron por caja", como en el PDF.
+- ✅ **Nombre "Compradores"** en la app local: ahora "Pasaron por caja", como en el PDF. Los nombres
+  internos (`buyers`, `is_buyer`, `buyer_seconds`) no cambian, para no romper bases ni datos existentes.

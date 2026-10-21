@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traffiqui Cloud</title>
+  <link rel="stylesheet" href="/vendor/styles.css">
+  <link rel="stylesheet" href="/static/cloud.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span>Traffiqui</span> Cloud <small id="orgName"></small></div>
+    <select id="orgSelect" aria-label="Empresa" hidden></select>
+    <div class="status">
+      <span id="userName"></span>
+      <button class="btn ghost" id="logout">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Rango">
+        <button data-range="today" aria-pressed="true">Hoy</button>
+        <button data-range="week" aria-pressed="false" title="Últimos 7 días, incluido hoy">Semana</button>
+        <button data-range="month" aria-pressed="false" title="Últimos 30 días, incluido hoy">Mes</button>
+        <button data-range="custom" aria-pressed="false">Personalizado</button>
+      </div>
+      <span class="custom" id="custom" hidden>
+        <input type="date" id="start" aria-label="Desde"> – <input type="date" id="end" aria-label="Hasta">
+      </span>
+      <button class="btn" id="refresh">Actualizar</button>
+      <span class="spacer"></span>
+      <span class="note" id="updated"></span>
+    </div>
+
+    <section class="hq-kpis" aria-label="Totales de todas las sedes">
+      <div class="kpi"><div class="label">Visitas</div><div class="value" id="tVisits">–</div><div class="sub" id="tVisitsSub"></div></div>
+      <div class="kpi in"><div class="label">Pasaron por caja</div><div class="value" id="tCheckout">–</div><div class="sub" id="tCheckoutSub"></div></div>
+      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="tDwell">–</div><div class="sub">en la tienda</div></div>
+      <div class="kpi"><div class="label">Hora punta</div><div class="value" id="tPeak">–</div><div class="sub">todas las sedes juntas</div></div>
+      <div class="kpi"><div class="label">Sedes en línea</div><div class="value" id="tOnline">–</div><div class="sub" id="tOnlineSub"></div></div>
+    </section>
+
+    <div class="card wide">
+      <h3>Sedes <small>ordenadas por visitas</small></h3>
+      <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Sede</th><th>Estado</th><th class="num">Visitas</th><th class="num">Pasaron por caja</th>
+            <th class="num">% que pasó por caja</th><th class="num">Permanencia prom.</th><th class="num">Hora punta</th>
+            <th class="num">Entradas (puertas)</th><th class="num">Máx. a la vez</th>
+          </tr></thead>
+          <tbody id="sitesTable"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="note">"Pasaron por caja" = estuvieron el tiempo configurado en la zona de cajas. No es lo mismo que una compra:
+        el sistema no ve los tickets. El personal no cuenta en ninguna cifra.</p>
+    </div>
+
+    <div class="hq-charts">
+      <div class="card">
+        <h3 id="seriesTitle">Visitas por hora y sede</h3>
+        <div class="legend" id="seriesLegend"></div>
+        <div class="chart-box"><canvas id="chSeries" aria-label="Visitas por sede en el tiempo"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Visitas por hora del día <small>todas las sedes</small></h3>
+        <div class="chart-box"><canvas id="chHours" aria-label="Visitas por hora del día, todas las sedes"></canvas></div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/vendor/chart.umd.min.js"></script>
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>

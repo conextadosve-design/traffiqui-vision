@@ -1,5 +1,10 @@
 # Pendientes
 
+## Antes de vender
+
+- [ ] **Licencia del detector**: Ultralytics YOLO11 es AGPL-3.0 (ver README, sección 13). Para vender Traffiqui hay
+      que comprar la licencia empresarial de Ultralytics o cambiar a un detector Apache-2.0 (YOLOX, RTMDet, RT-DETR).
+
 ## Distribución como programa de Windows (.exe)
 
 - [ ] **Instalador**: empaquetar con Nuitka (o PyInstaller) y crear el instalador con Velopack / Inno Setup.
