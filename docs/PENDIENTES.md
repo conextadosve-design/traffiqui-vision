@@ -25,6 +25,11 @@
 - [ ] **Suspender a distancia**: con todo local no hay un servidor de Traffiqui al que preguntar. Mientras
       tanto, licencias con vencimiento (`--vence`) que se renuevan al pagar: si no se renuevan, al vencer
       la empresa vuelve a 1 sede. Si se quiere apagar del todo, hará falta un servidor de licencias en internet.
+- [ ] **Aviso de vencimiento** en el panel de la sede principal desde 15 días antes: "Tu licencia vence en N días,
+      contacta con Andrés Sandoval (0412 755 9087)".
+- [ ] **Periodo de gracia** de unos días tras el vencimiento antes de limitar las sedes, por si el pago se retrasa.
+- [ ] **Registro de licencias emitidas**: cada `python -m cloud.licencia emitir` se anota en un Excel/CSV en el PC del
+      administrador (empresa, sedes, vencimiento, fecha de emisión) para llevar el control de renovaciones.
 - [ ] **Licencia en las tiendas**: hoy una tienda funciona sola sin licencia (solo el envío a la sede
       principal está limitado). Decidir si la app de tienda también debe pedir licencia.
 - [ ] **Condiciones por escrito** de cuándo se suspende o vence una licencia, coherentes con el "acceso gratis
