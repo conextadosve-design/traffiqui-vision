@@ -253,9 +253,11 @@ prueba. El video en vivo y la calibración se prueban en la PC de la tienda.
 
 ### Salud de cámaras, alertas y copias de seguridad
 - **Salud de cada cámara** (Ajustes → Cámaras): *sin señal*, *tapada u oscura* (sin contraste
-  ni bordes durante 10 s) o *se movió* (los bordes fijos de la escena ya no coinciden con su referencia durante
-  30 s; la referencia, solo bordes, se guarda en `datos/camaras/`). Tras recolocar una cámara a propósito,
-  "Aceptar posición" (y recalibrarla si cuenta en el plano).
+  ni bordes durante 10 s) o *se movió*: la escena se desplazó más de un 8 % del ancho, giró más de 6° o cambió
+  el zoom más de un 12 % durante 45 s, medido con puntos fijos de la imagen emparejados con la referencia (las
+  personas no cuentan). Una vibración, un cambio de luz o alguien tapando media imagen no avisan; si apunta a
+  otro sitio sin nadie delante, avisa a los 3 min. La referencia (solo puntos, ninguna imagen) se guarda en
+  `datos/camaras/`. Tras recolocar una cámara a propósito, "Aceptar posición" (y recalibrarla si cuenta en el plano).
 - **Alertas** (Ajustes → Alertas): aforo máximo y fila larga en caja (0 = desactivadas), más las cámaras
   con problemas. Se ven arriba del panel y viajan a la sede principal, que guarda su historial.
 - **Copias de seguridad**: una al día de cada base, en `datos/copias/` (7 diarias y 4 semanales), con una
