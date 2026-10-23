@@ -95,6 +95,7 @@ class PipelineThread(threading.Thread):
         self.fusion = fusion
         self.health = CameraHealth(camera_id, DATA_DIR / "camaras")
         self._gid: dict[int, int] = {}       # track local -> ID global
+        self._people_boxes: list = []        # recuadros del último cuadro (la salud de la cámara los ignora)
         self._app_count: dict[int, int] = {}
         self._stop_event = threading.Event()
         self._lock = threading.Lock()
@@ -198,6 +199,7 @@ class PipelineThread(threading.Thread):
         raw = sv.Detections(xyxy=found.xyxy, confidence=found.confidence,
                             class_id=np.zeros(len(found.confidence), dtype=int))
         raw_boxes = [tuple(int(v) for v in b) for b, c in zip(raw.xyxy, raw.confidence) if c >= cfg["confidence"]]
+        self._people_boxes = [tuple(int(v) for v in b) for b, c in zip(raw.xyxy, raw.confidence) if c >= 0.3]
         dets = self._ensure_tracker(cfg).update_with_detections(raw)
 
         visible = []
@@ -357,7 +359,7 @@ class PipelineThread(threading.Thread):
                 self.health.no_signal()
                 time.sleep(0.003)
                 continue
-            self.health.observe(frame)
+            self.health.observe(frame, people=self._people_boxes)   # las personas no cuentan como escena
             max_fps = float(self.camera_cfg(cfg).get("max_fps") or 0)
             if max_fps > 0 and stamps and time.perf_counter() - stamps[-1] < 1.0 / max_fps:
                 time.sleep(0.005)  # límite de FPS por cámara para repartir el CPU entre varias
