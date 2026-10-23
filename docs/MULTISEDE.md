@@ -121,8 +121,9 @@ encargado de una sede solo ve la suya.
 
 Seguridad: contraseñas con scrypt; la sesión es una cookie `httponly` y en la base solo se guarda su
 hash; de la clave de sede también se guarda solo el hash. El primer uso (crear empresa y usuario) solo
-se acepta desde el propio PC. El puerto 9000 solo se abre a Tailscale y a la red local. Pendiente:
-límite de intentos de inicio de sesión y copias de seguridad automáticas de la base.
+se acepta desde el propio PC. El puerto 9000 solo se abre a Tailscale y a la red local. Tras 5 intentos
+fallidos se bloquea el acceso 15 minutos; la contraseña se recupera con el código `TQR-…` o por correo. La
+base se copia sola cada día (`C:\ProgramData\Traffiqui\copias`).
 
 ## Por decidir
 
