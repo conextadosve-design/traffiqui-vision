@@ -1,13 +1,14 @@
 # Pendientes
 
 Estado al 23-10-2026: `main` incluye los pull requests #2 (multisede, instalador, licencias), #3 (detector
-D-FINE, fase 2, alertas, copias, cuentas) #4 (interfaz nueva, en vivo automático) y #5 (conteo estable de una persona quieta). 126 pruebas automáticas pasan; el instalador de Windows se genera
+D-FINE, fase 2, alertas, copias, cuentas) #4 (interfaz nueva, en vivo automático) #5 (conteo estable de una persona quieta) y #6 (aviso de cámara movida sin falsos positivos). 130 pruebas automáticas pasan; el instalador de Windows se genera
 y se prueba solo en GitHub Actions (138 MB completo, 2 MB la actualización).
 
 ## Hecho recientemente
 
 | Fecha | Qué | Dónde |
 |---|---|---|
+| 23-10-2026 | Memoria para reconocer a quien sale y vuelve: 5 min por defecto (antes 20 s), ajustable de 0 a 30 min con botones rápidos en Ajustes → Conteo y cajas; tras 1 min exige más parecido de ropa | `app/vision/fusion.py`, `app/static/index.html` |
 | 23-10-2026 | «Cámara movida» solo con movimientos grandes: mide desplazamiento, giro y zoom de la escena con puntos fijos (sin contar personas). Con 40 fotos reales: 0 falsos avisos por luz, vibración o alguien tapando la imagen (antes 28 de 40 al tapar); 40 de 40 golpes detectados (antes 6) | `app/vision/health.py` |
 | 23-10-2026 | Arreglo: una persona quieta frente a la cámara contaba como varias (ByteTrack no recibía las detecciones dudosas; re-entrada en el mismo sitio más tolerante con la ropa) | `app/vision/pipeline.py`, `app/vision/fusion.py` |
 | 23-10-2026 | Interfaz rediseñada: ventana propia de Windows, pestañas por tarea, panel de la sede principal cómodo en el teléfono y guía de bienvenida | `app/static/`, `cloud/static/`, `app/launcher.py` |

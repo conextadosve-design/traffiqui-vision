@@ -528,6 +528,27 @@
         </div>
 
         <div class="card" data-group="conteo">
+          <h2>Reconocer a quien vuelve</h2>
+          <div class="field">
+            <label for="reentry">Recordar a una persona que sale de cámara durante <output data-for="reid_reentry_s"></output></label>
+            <input type="range" id="reentry" min="0" max="1800" step="15" data-cfg-range="reid_reentry_s" data-format="dur">
+            <div class="presets" data-preset-for="reid_reentry_s" role="group" aria-label="Valores rápidos">
+              <button type="button" class="chip-btn" data-v="0">Apagado</button>
+              <button type="button" class="chip-btn" data-v="20">20 s</button>
+              <button type="button" class="chip-btn" data-v="60">1 min</button>
+              <button type="button" class="chip-btn" data-v="120">2 min</button>
+              <button type="button" class="chip-btn" data-v="300">5 min</button>
+              <button type="button" class="chip-btn" data-v="600">10 min</button>
+              <button type="button" class="chip-btn" data-v="1800">30 min</button>
+            </div>
+            <span class="help">Si vuelve dentro de este tiempo con la misma ropa, es la misma visita: no se cuenta dos veces.
+              5 min es lo recomendado. Pasado el primer minuto se exige más parecido de ropa, para no confundir a dos
+              personas vestidas igual. El cambio se aplica al momento: puedes probar distintos valores.</span>
+          </div>
+          <p class="note">Traffiqui solo recuerda los colores de la ropa, en memoria y sin fotos; se olvidan al terminar el tiempo.</p>
+        </div>
+
+        <div class="card" data-group="conteo">
           <h2>Cajas y personal</h2>
           <div class="field">
             <label for="buyerSecs">Tiempo en caja para contar «pasó por caja» <output data-for="buyer_seconds"></output></label>
@@ -646,12 +667,7 @@
         </div>
 
         <div class="card" data-group="avanzado">
-          <h2>Reidentificación</h2>
-          <div class="field">
-            <label for="reentry">Ventana de re-entrada en la misma cámara <output data-for="reid_reentry_s"></output></label>
-            <input type="range" id="reentry" min="0" max="120" step="5" data-cfg-range="reid_reentry_s" data-unit=" s">
-            <span class="help">Si alguien sale y vuelve dentro de este tiempo con ropa parecida, conserva su número. 0 = desactivado.</span>
-          </div>
+          <h2>Varias cámaras</h2>
           <div class="field">
             <label for="handoff">Ventana de traspaso entre cámaras <output data-for="reid_handoff_s"></output></label>
             <input type="range" id="handoff" min="0" max="60" step="1" data-cfg-range="reid_handoff_s" data-unit=" s">

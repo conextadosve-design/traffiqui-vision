@@ -58,7 +58,7 @@ DEFAULTS: dict = {
     #   "max_fps": 0, "calibration": {"image": [[u, v]…], "plan": [[x, y]…], "H": [[…]], "error_m": 0.1}}]
     "cameras": [],
     "floorplan": None,       # ver app/vision/plan.py
-    "reid_reentry_s": 20.0,  # ventana para reconocer a alguien que vuelve a la misma cámara
+    "reid_reentry_s": 300.0,  # memoria para reconocer a alguien que vuelve a la misma cámara (5 min)
     "reid_handoff_s": 8.0,   # ventana para el traspaso entre cámaras
     "show_plan_areas": True,  # dibujar las áreas del plano sobre el video (cámaras calibradas)
     # overlays

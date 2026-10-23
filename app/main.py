@@ -354,7 +354,7 @@ NUMERIC_RANGES = {  # clave: (mínimo, máximo, nombre para el mensaje)
     "min_track_seconds": (0, 10, "La duración mínima de un track"),
     "lost_track_seconds": (0.5, 10, "El tiempo de espera de un track perdido"),
     "camera_index": (0, 9, "El índice de cámara"),
-    "reid_reentry_s": (0, 300, "La ventana de re-entrada"),
+    "reid_reentry_s": (0, 1800, "La memoria para reconocer a quien vuelve"),
     "reid_handoff_s": (0, 120, "La ventana de traspaso entre cámaras"),
     "buyer_seconds": (5, 600, "El tiempo en cajas para contar como \"pasó por caja\""),
     "staff_hours": (0, 24, "Las horas para considerar a alguien personal"),

@@ -224,7 +224,7 @@ cámaras):
 |---|---|
 | **Superposición** | Otra cámara la ve en este momento en el mismo punto del plano (< 0.9 m). Es lo más confiable: diseña la cobertura con 10–20 % de solape entre cámaras vecinas. |
 | **Traspaso** | Se perdió hace poco (≤ 8 s, configurable) en otra cámara, a una distancia alcanzable caminando (≤ 2 m/s + 1 m) y con ropa parecida. |
-| **Re-entrada** | Salió y volvió a la misma cámara en ≤ 20 s (configurable) con ropa parecida. Funciona aun sin calibrar: en la prueba con la webcam ya une a quien sale y vuelve. |
+| **Re-entrada** | Salió y volvió a la misma cámara en ≤ 5 min (Ajustes → Conteo y cajas, de 0 a 30 min) con ropa parecida; pasado 1 min se exige más parecido. Funciona aun sin calibrar: en la prueba con la webcam ya une a quien sale y vuelve. |
 
 La "ropa parecida" es un histograma de color del torso y las piernas, **no la cara**. Vive solo en
 memoria y se descarta al terminar el track. Si dos candidatos quedan casi empatados, **no se une a
@@ -294,7 +294,7 @@ borde no corte la visita.
 
 ## 5. Limitaciones conocidas
 
-- **La reidentificación es aproximada.** Si alguien vuelve después de la ventana de re-entrada (20 s
+- **La reidentificación es aproximada.** Si alguien vuelve después de la ventana de re-entrada (5 min
   por defecto), cambia de cámara fuera de la ventana de traspaso, o su ropa se ve muy distinta con otra
   luz, recibe un **ID nuevo** y se cuenta otra vez. "Personas únicas" sigue siendo una cota superior,
   aunque más cercana a la real que sin reidentificación (sección 3).

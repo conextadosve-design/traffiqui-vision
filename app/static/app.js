@@ -304,7 +304,7 @@ $$('[data-heatmode]').forEach(b => b.addEventListener('click', () =>
 // ---------------------------------------------------------------- controles ↔ configuración
 $$('input[data-cfg]').forEach(el => el.addEventListener('change', () => patch({ [el.dataset.cfg]: el.checked }, null)));
 $$('input[data-cfg-range]').forEach(el => {
-  el.addEventListener('input', () => { setOutput(el.dataset.cfgRange, +el.value, el.dataset.unit); patchLater(el.dataset.cfgRange, +el.value); });
+  el.addEventListener('input', () => { setOutput(el.dataset.cfgRange, +el.value, el.dataset.unit, el.dataset.format); patchLater(el.dataset.cfgRange, +el.value); });
 });
 $$('input[data-cfg-radio]').forEach(el => el.addEventListener('change', () => el.checked && patch({ [el.dataset.cfgRadio]: el.value })));
 $$('select[data-cfg-select]').forEach(el => el.addEventListener('change', () =>
@@ -314,15 +314,23 @@ $('#resSelect').addEventListener('change', e => {
   patch({ width, height }, 'Resolución aplicada; la cámara se reabre');
 });
 
-function setOutput(key, v, unit = '') {
-  $$(`output[data-for="${key}"]`).forEach(o => { o.textContent = `${v}${unit || ''}`; });
+/** Segundos legibles: «45 s», «5 min», «1 min 30 s», «apagado». */
+const durText = s => !s ? 'apagado' : s < 60 ? `${s} s` : `${Math.floor(s / 60)} min${s % 60 ? ` ${s % 60} s` : ''}`;
+
+function setOutput(key, v, unit = '', format = '') {
+  $$(`output[data-for="${key}"]`).forEach(o => { o.textContent = format === 'dur' ? durText(v) : `${v}${unit || ''}`; });
+  $$(`[data-preset-for="${key}"] [data-v]`).forEach(b => b.classList.toggle('on', Number(b.dataset.v) === Number(v)));
 }
+$$('[data-preset-for] [data-v]').forEach(b => b.addEventListener('click', () => {
+  const key = b.closest('[data-preset-for]').dataset.presetFor;
+  patch({ [key]: Number(b.dataset.v) }, `Guardado: ${durText(Number(b.dataset.v))}`);
+}));
 
 function syncControls() {
   $$('input[data-cfg]').forEach(el => { el.checked = !!cfg[el.dataset.cfg]; });
   $$('input[data-cfg-range]').forEach(el => {
     if (document.activeElement !== el) el.value = cfg[el.dataset.cfgRange];
-    setOutput(el.dataset.cfgRange, cfg[el.dataset.cfgRange], el.dataset.unit);
+    setOutput(el.dataset.cfgRange, cfg[el.dataset.cfgRange], el.dataset.unit, el.dataset.format);
   });
   $$('input[data-cfg-radio]').forEach(el => { el.checked = cfg[el.dataset.cfgRadio] === el.value; });
   $$('select[data-cfg-select]').forEach(el => { el.value = String(cfg[el.dataset.cfgSelect]); });
