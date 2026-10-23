@@ -24,9 +24,10 @@ import uuid
 
 log = logging.getLogger("traffiqui.cloud")
 
-AGENT_VERSION = "1.1"
+AGENT_VERSION = "1.2"
 INTERVAL_S = 30.0
-LIVE_INTERVAL_S = 3.0      # estado en vivo (personas ahora, plano, cámaras, alertas)
+LIVE_INTERVAL_S = 3.0      # estado en vivo (personas ahora, plano, cámaras, alertas), si la sede principal no dice otro
+LIVE_MIN_S, LIVE_MAX_S = 1.0, 300.0   # la sede principal decide el ritmo (next_s) dentro de estos límites
 LIVE_BACKOFF_S = 30.0      # si la sede principal no responde, se reintenta con calma
 BATCH_ROWS = 2000
 MAX_ROUNDS = 20      # lotes seguidos por ciclo al ponerse al día
@@ -67,6 +68,7 @@ class CloudSync(threading.Thread):
         self.db, self.floorplan, self.interval, self._post = db, floorplan, interval, post
         self.live = live   # función que devuelve el estado en vivo de la tienda (ver app/main.py)
         self._live_thread: threading.Thread | None = None
+        self.live_interval = LIVE_INTERVAL_S   # lo ajusta la sede principal en cada respuesta
         self._stop_event = threading.Event()
         self._wake = threading.Event()
         self._lock = threading.Lock()   # un solo envío a la vez
@@ -187,7 +189,11 @@ class CloudSync(threading.Thread):
         if not (self.live and lk["url"] and lk["site_key"]) or self.state.get("state") == "blocked":
             return False
         try:
-            self._post(lk["url"], lk["site_key"], "/api/agent/live", {"db_uid": lk["db_uid"], **self.live()})
+            r = self._post(lk["url"], lk["site_key"], "/api/agent/live", {"db_uid": lk["db_uid"], **self.live()})
+            try:
+                self.live_interval = min(LIVE_MAX_S, max(LIVE_MIN_S, float(r.get("next_s", LIVE_INTERVAL_S))))
+            except (TypeError, ValueError, AttributeError):
+                self.live_interval = LIVE_INTERVAL_S
             return True
         except CloudError as e:
             if e.blocked:
@@ -200,7 +206,7 @@ class CloudSync(threading.Thread):
     def _live_loop(self) -> None:
         while not self._stop_event.is_set():
             ok = self.push_live()
-            self._stop_event.wait(LIVE_INTERVAL_S if ok else LIVE_BACKOFF_S)
+            self._stop_event.wait(self.live_interval if ok else LIVE_BACKOFF_S)
 
     def run(self) -> None:
         if self.live and self._live_thread is None:

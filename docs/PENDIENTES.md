@@ -1,13 +1,14 @@
 # Pendientes
 
 Estado al 23-10-2026: `main` incluye los pull requests #2 (multisede, instalador, licencias) y #3 (detector
-D-FINE, fase 2, alertas, copias, cuentas). 110 pruebas automáticas pasan; el instalador de Windows se genera
+D-FINE, fase 2, alertas, copias, cuentas). 113 pruebas automáticas pasan; el instalador de Windows se genera
 y se prueba solo en GitHub Actions (138 MB completo, 2 MB la actualización).
 
 ## Hecho recientemente
 
 | Fecha | Qué | Dónde |
 |---|---|---|
+| 23-10-2026 | En vivo automático: cada 3 s solo mientras alguien mira la sede, si no cada 30 s (~82 % menos peticiones) | `cloud/live.py`, `app/cloud_sync.py` |
 | 23-10-2026 | Detector D-FINE (Apache-2.0) en ONNX: más preciso que YOLO11n y sin PyTorch ni Ultralytics | README §6, `tools/detector/` |
 | 23-10-2026 | Fase 2 de la multisede: en vivo cada 3 s y analítica completa de cada sede desde la sede principal | `cloud/live.py`, `cloud/site_reports.py` |
 | 23-10-2026 | Salud de cámaras: sin señal, tapada o movida, con "Aceptar posición" | `app/vision/health.py` |

@@ -57,6 +57,9 @@ cajas y alertas) y **analítica** completa (comparativas con la semana anterior 
 recorridos, cajas, puertas y mapa de calor). Las **alertas** (aforo, fila en caja, cámara caída, tapada o
 movida, sede sin enviar datos) aparecen arriba del Resumen.
 
+Para ahorrar conexión, las tiendas envían su estado en vivo cada 30 s y pasan a cada 3 s mientras alguien
+mira la página de la sede (se cambia en *Sedes y usuarios → Alertas y en vivo*). No afecta al conteo.
+
 El instalador abre el puerto 9000 del firewall de Windows solo para Tailscale y la red local.
 
 Para que gerencia o marketing entren desde **otro PC o portátil**: instalan Tailscale con la misma cuenta y

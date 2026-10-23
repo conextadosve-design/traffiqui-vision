@@ -87,16 +87,27 @@
         </form>
       </div>
       <div class="card" id="alertsCfgCard">
-        <h3>Alertas</h3>
+        <h3>Alertas y en vivo</h3>
         <form id="offlineForm">
           <div class="field">
             <label for="offlineMin">Avisar si una sede no envía datos durante (minutos)</label>
             <input type="number" id="offlineMin" min="2" max="1440" required>
           </div>
+          <div class="field">
+            <label for="liveMode">Estado en vivo de las tiendas</label>
+            <select id="liveMode">
+              <option value="auto">Automático (recomendado)</option>
+              <option value="rapido">Siempre cada 3 s</option>
+              <option value="ahorro">Siempre cada 30 s</option>
+            </select>
+          </div>
           <button class="btn" type="submit">Guardar</button>
         </form>
         <p class="note">El aforo máximo, la fila en caja y las cámaras se configuran en cada tienda (Configuración).
           Las alertas aparecen arriba del Resumen y en la página de cada sede.</p>
+        <p class="note"><b>Automático</b>: cada tienda envía su estado en vivo cada 3 s mientras alguien tiene abierta la
+          página de esa sede y cada 30 s si no. Solo cambia la frescura de la vista en vivo y lo que tardan las alertas en
+          llegar aquí; las tiendas siguen contando igual y el historial no cambia.</p>
       </div>
 
       <div class="card" id="securityCard">
