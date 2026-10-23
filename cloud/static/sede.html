@@ -2,32 +2,42 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Traffiqui · Sede</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17202B">
+  <link rel="icon" href="/vendor/icono.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>Traffiqui</title>
   <link rel="stylesheet" href="/vendor/styles.css">
   <link rel="stylesheet" href="/static/cloud.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span>Traffiqui</span> Sede principal <small id="orgName"></small></div>
-    <nav class="tabs" id="nav">
-      <a class="tab" href="/">Resumen</a>
-      <a class="tab" href="/sedes" id="navManage">Sedes y usuarios</a>
+    <a class="brand" href="/"><span>Traffiqui</span> <small id="orgName">Sede principal</small></a>
+    <nav class="tabs" id="nav" aria-label="Secciones">
+      <a class="tab" href="/" aria-selected="true"><svg class="i" aria-hidden="true"><use href="#i-casa"/></svg>Resumen</a>
+      <a class="tab" href="/sedes" id="navManage"><svg class="i" aria-hidden="true"><use href="#i-ajustes"/></svg>Administrar</a>
     </nav>
     <div class="status">
-      <span id="userName"></span>
-      <button class="btn ghost" id="logout">Salir</button>
+      <span class="user-chip hide-sm" id="userName"></span>
+      <button class="help-btn" id="helpBtn" type="button" title="Ver la guía de nuevo" aria-label="Ver la guía de nuevo">?</button>
+      <button class="btn ghost" id="logout" title="Salir"><svg class="i sm" aria-hidden="true"><use href="#i-salir"/></svg><span class="hide-sm">Salir</span></button>
     </div>
   </header>
 
   <main>
     <div class="site-head">
-      <a class="note" href="/">← Todas las sedes</a>
+      <a class="back" href="/">← Todas las sedes</a>
       <h1 id="siteName">Sede</h1>
       <span class="state" id="siteState"></span>
     </div>
 
+    <nav class="subtabs" id="siteNav" aria-label="Partes de la sede">
+      <button class="subtab" data-target="vivo"><svg class="i sm" aria-hidden="true"><use href="#i-vivo"/></svg>En vivo</button>
+      <button class="subtab" data-target="analitica"><svg class="i sm" aria-hidden="true"><use href="#i-informes"/></svg>Analítica</button>
+    </nav>
+
     <!-- ================= EN VIVO ================= -->
+    <div data-group="vivo">
     <h2 class="section-title">En vivo <small id="liveAge"></small></h2>
     <div class="alert info" id="liveOff" hidden><div><b>Sin datos en vivo.</b>
       <p id="liveOffText">La tienda no está enviando su estado en vivo. Revisa que Traffiqui esté abierto en ese PC y conectado a Tailscale.</p></div></div>
@@ -36,7 +46,7 @@
       <div class="kpi"><div class="label">Visitas hoy</div><div class="value" id="lToday">–</div><div class="sub">personas distintas</div></div>
       <div class="kpi in"><div class="label">Pasaron por caja hoy</div><div class="value" id="lCheckout">–</div><div class="sub" id="lCheckoutSub"></div></div>
       <div class="kpi"><div class="label">Entradas / salidas</div><div class="value" id="lDoors">–</div><div class="sub">desde que abrió Traffiqui</div></div>
-      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="lDwell">–</div><div class="sub" id="lStaff"></div></div>
+      <div class="kpi"><div class="label">Tiempo promedio</div><div class="value" id="lDwell">–</div><div class="sub" id="lStaff"></div></div>
     </section>
     <div class="live-grid">
       <div class="card">
@@ -51,7 +61,10 @@
       </div>
     </div>
 
+    </div>
+
     <!-- ================= ANALÍTICA ================= -->
+    <div data-group="analitica">
     <h2 class="section-title">Analítica</h2>
     <div class="filters">
       <div class="seg" role="group" aria-label="Rango">
@@ -63,12 +76,12 @@
       <span class="custom" id="custom" hidden>
         <input type="date" id="start" aria-label="Desde"> – <input type="date" id="end" aria-label="Hasta">
       </span>
-      <button class="btn" id="refresh">Actualizar</button>
+      <button class="btn" id="refresh"><svg class="i sm" aria-hidden="true"><use href="#i-recargar"/></svg>Actualizar</button>
     </div>
     <section class="hq-kpis">
       <div class="kpi"><div class="label">Visitas</div><div class="value" id="aVisits">–</div><div class="sub cmp" id="aVisitsCmp"></div></div>
       <div class="kpi in"><div class="label">Pasaron por caja</div><div class="value" id="aCheckout">–</div><div class="sub cmp" id="aCheckoutCmp"></div></div>
-      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="aDwell">–</div><div class="sub cmp" id="aDwellCmp"></div></div>
+      <div class="kpi"><div class="label">Tiempo promedio</div><div class="value" id="aDwell">–</div><div class="sub cmp" id="aDwellCmp"></div></div>
       <div class="kpi"><div class="label">Hora punta</div><div class="value" id="aPeak">–</div><div class="sub" id="aPeakSub"></div></div>
       <div class="kpi"><div class="label">Máximo a la vez</div><div class="value" id="aMax">–</div><div class="sub">personas</div></div>
     </section>
@@ -105,10 +118,13 @@
     <p class="note">«Pasaron por caja» = estuvieron el tiempo configurado en la zona de cajas; no es lo mismo que una compra.
       El personal no cuenta en ninguna cifra. Las comparativas usan el mismo tramo horario: hoy hasta esta hora contra
       el mismo día de la semana pasada y el mismo día del mes pasado.</p>
+    </div>
   </main>
 
   <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/vendor/ui.js"></script>
   <script src="/vendor/chart.umd.min.js"></script>
+  <script src="/static/hq.js"></script>
   <script src="/static/plan.js"></script>
   <script src="/static/sede.js"></script>
 </body>

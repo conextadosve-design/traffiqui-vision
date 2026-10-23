@@ -39,36 +39,41 @@ publica además en **Releases**.
 ## 2. Sede principal (una vez por cliente)
 
 1. **Tailscale**: instálalo desde https://tailscale.com/download y entra con la cuenta de la empresa.
-2. **Traffiqui**: ejecuta el instalador y elige **La sede principal**. Se abre el navegador.
+2. **Traffiqui**: ejecuta el instalador y elige **La sede principal**. Se abre la ventana de Traffiqui.
 3. **Primer uso**: escribe el nombre de la empresa (igual que en su licencia), tu nombre, correo y contraseña.
-4. **Licencia**: en *Sedes y usuarios → Licencia*, pega el código que te dio Traffiqui. Sin código se
+4. **Licencia**: en *Administrar → Licencia*, pega el código que te dio Traffiqui. Sin código se
    puede tener 1 sede.
 5. **Sedes**: crea cada tienda y **copia su clave** (`tqs_…`); solo se muestra una vez.
 6. Apunta la **dirección para las tiendas** que aparece arriba (la de Tailscale, `http://100.x.y.z:9000`).
 7. **Usuarios**: agrega a gerencia y marketing ("Todas las sedes") o a encargados ("Solo una sede").
 8. **Código de recuperación**: al terminar el primer uso aparece un código `TQR-…`. **Guárdalo**: si se olvida
    la contraseña, con él se pone una nueva (*¿Olvidaste tu contraseña?* en la pantalla de entrada). Con el
-   correo configurado (*Sedes y usuarios → Correo saliente*) también llega un enlace por email.
+   correo configurado (*Administrar → Correo saliente*) también llega un enlace por email.
 9. **Copias de seguridad**: se hacen solas cada día. Elige una **carpeta extra** en otro disco o en
-   OneDrive / Google Drive (*Sedes y usuarios → Copias de seguridad*).
+   OneDrive / Google Drive (*Administrar → Copias de seguridad*).
 
 Cada sede tiene su página (clic en su nombre en el Resumen): **en vivo** (plano con las personas, cámaras,
 cajas y alertas) y **analítica** completa (comparativas con la semana anterior y el mes pasado, áreas,
 recorridos, cajas, puertas y mapa de calor). Las **alertas** (aforo, fila en caja, cámara caída, tapada o
 movida, sede sin enviar datos) aparecen arriba del Resumen.
 
+Para ahorrar conexión, las tiendas envían su estado en vivo cada 30 s y pasan a cada 3 s mientras alguien
+mira la página de la sede (se cambia en *Administrar → Alertas y en vivo*). No afecta al conteo.
+
 El instalador abre el puerto 9000 del firewall de Windows solo para Tailscale y la red local.
 
 Para que gerencia o marketing entren desde **otro PC o portátil**: instalan Tailscale con la misma cuenta y
-abren en el navegador la dirección de Tailscale del paso 6. No necesitan instalar Traffiqui.
+abren en el navegador la dirección de Tailscale del paso 6. No necesitan instalar Traffiqui. En el teléfono
+(Android o iPhone) es igual: Tailscale con la misma cuenta, la dirección en el navegador y **Añadir a pantalla de
+inicio** para tenerlo como una app.
 
 ## 3. Cada tienda
 
 1. **Tailscale**: instálalo y entra con **la misma cuenta** que la sede principal.
 2. **Traffiqui**: ejecuta el instalador y elige **Una tienda**.
 3. Configura las cámaras, el plano y las zonas como siempre (ver README).
-4. **Configuración → Sede principal**: pega la dirección de Tailscale y la clave de la sede → **Conectar**.
-5. **Configuración → General**: aforo máximo y fila en caja para las alertas (opcionales), y el detector
+4. **Ajustes → Sede principal**: pega la dirección de Tailscale y la clave de la sede → **Conectar**.
+5. **Ajustes → Alertas**: aforo máximo y fila en caja (opcionales). En **Ajustes → Cámaras**, el detector
    (preciso o rápido si el PC tiene muchas cámaras). En *Cámaras de la tienda* se ve la salud de cada
    cámara; si una se movió a propósito, "Aceptar posición".
 
@@ -100,7 +105,14 @@ python -m cloud.licencia emitir "Farmacias Sol" 5 --vence 2027-12-31 --privada C
 Envía al cliente el código `TQ1.…`. El nombre de la empresa debe coincidir con el que escribió en el
 primer uso (no importan mayúsculas ni espacios de más).
 
-## 5. Dónde quedan los datos
+## 5. La ventana de Traffiqui
+
+Traffiqui se abre en su propia ventana, con su nombre e icono, sin pestañas ni barra de direcciones (usa
+Microsoft Edge, que viene en todo Windows 10 y 11). Si se cierra la ventana, el programa sigue contando: se vuelve
+a abrir con el acceso directo del escritorio o con el icono junto al reloj → **Abrir Traffiqui**. El mismo menú
+tiene **Abrir en el navegador**. La primera vez aparece una guía corta; se repite con el botón **?** de arriba.
+
+## 6. Dónde quedan los datos
 
 `C:\ProgramData\Traffiqui`: base de datos de la tienda (`traffiqui.db`) o de la sede principal
 (`sede-principal.db`), el modo elegido (`modo.json`), los registros (`logs\traffiqui.log`) y las copias

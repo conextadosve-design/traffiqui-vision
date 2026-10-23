@@ -2,32 +2,45 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Traffiqui · Sedes y usuarios</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17202B">
+  <link rel="icon" href="/vendor/icono.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>Traffiqui</title>
   <link rel="stylesheet" href="/vendor/styles.css">
   <link rel="stylesheet" href="/static/cloud.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span>Traffiqui</span> Sede principal <small id="orgName"></small></div>
-    <nav class="tabs">
-      <a class="tab" href="/">Resumen</a>
-      <a class="tab" href="/sedes" aria-selected="true">Sedes y usuarios</a>
+    <a class="brand" href="/"><span>Traffiqui</span> <small id="orgName">Sede principal</small></a>
+    <nav class="tabs" aria-label="Secciones">
+      <a class="tab" href="/"><svg class="i" aria-hidden="true"><use href="#i-casa"/></svg>Resumen</a>
+      <a class="tab" href="/sedes" aria-selected="true"><svg class="i" aria-hidden="true"><use href="#i-ajustes"/></svg>Administrar</a>
     </nav>
     <div class="status">
-      <span id="userName"></span>
-      <button class="btn ghost" id="logout">Salir</button>
+      <span class="user-chip hide-sm" id="userName"></span>
+      <button class="help-btn" id="helpBtn" type="button" title="Ver la guía de nuevo" aria-label="Ver la guía de nuevo">?</button>
+      <button class="btn ghost" id="logout" title="Salir"><svg class="i sm" aria-hidden="true"><use href="#i-salir"/></svg><span class="hide-sm">Salir</span></button>
     </div>
   </header>
 
   <main class="manage">
-    <div class="card wide" id="connectCard">
+    <div class="page-head"><div><h1>Administrar</h1><p>Tus sedes, quién entra al panel, la licencia y la seguridad.</p></div></div>
+    <nav class="subtabs" id="manageNav" aria-label="Partes de la administración">
+      <button class="subtab" data-target="sedes"><svg class="i sm" aria-hidden="true"><use href="#i-tienda"/></svg>Sedes</button>
+      <button class="subtab" data-target="usuarios"><svg class="i sm" aria-hidden="true"><use href="#i-personas"/></svg>Usuarios</button>
+      <button class="subtab" data-target="alertas"><svg class="i sm" aria-hidden="true"><use href="#i-campana"/></svg>Alertas y en vivo</button>
+      <button class="subtab" data-target="licencia"><svg class="i sm" aria-hidden="true"><use href="#i-llave"/></svg>Licencia</button>
+      <button class="subtab" data-target="seguridad"><svg class="i sm" aria-hidden="true"><use href="#i-escudo"/></svg>Seguridad y correo</button>
+      <button class="subtab" data-target="copias"><svg class="i sm" aria-hidden="true"><use href="#i-copia"/></svg>Copias</button>
+    </nav>
+    <div class="card wide" id="connectCard" data-group="sedes">
       <h3>Cómo se conectan las tiendas</h3>
       <ol class="steps-list">
         <li>Instala <b>Tailscale</b> en este PC y en el PC de cada tienda, con la misma cuenta
           (<a href="https://tailscale.com/download" target="_blank" rel="noopener">tailscale.com/download</a>).</li>
         <li>Crea la sede aquí abajo y copia su <b>clave</b>.</li>
-        <li>En la tienda, abre Traffiqui → Configuración → <b>Sede principal</b>, pega la dirección y la clave.</li>
+        <li>En la tienda, abre Traffiqui → Ajustes → <b>Sede principal</b>, pega la dirección y la clave.</li>
       </ol>
       <div class="field">
         <span class="label">Dirección de este PC para las tiendas</span>
@@ -36,7 +49,7 @@
     </div>
 
     <div class="manage-grid">
-      <div class="card">
+      <div class="card" data-group="sedes">
         <h3>Sedes <small id="licenseSummary"></small></h3>
         <div class="table-scroll">
           <table>
@@ -56,7 +69,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" data-group="licencia">
         <h3>Licencia</h3>
         <p id="licenseText"></p>
         <form id="licenseForm">
@@ -70,7 +83,7 @@
       </div>
 
 
-      <div class="card" id="backupCard" data-api="/api/manage/backup">
+      <div class="card" id="backupCard" data-api="/api/manage/backup" data-group="copias">
         <h3>Copias de seguridad</h3>
         <p class="note">Este PC guarda los datos de todas las sedes. Cada día se hace una copia (las 7 últimas y una
           por semana del último mes). Elige además una carpeta en otro disco o en OneDrive / Google Drive.</p>
@@ -86,20 +99,31 @@
           </div>
         </form>
       </div>
-      <div class="card" id="alertsCfgCard">
-        <h3>Alertas</h3>
+      <div class="card" id="alertsCfgCard" data-group="alertas">
+        <h3>Alertas y en vivo</h3>
         <form id="offlineForm">
           <div class="field">
             <label for="offlineMin">Avisar si una sede no envía datos durante (minutos)</label>
             <input type="number" id="offlineMin" min="2" max="1440" required>
           </div>
+          <div class="field">
+            <label for="liveMode">Estado en vivo de las tiendas</label>
+            <select id="liveMode">
+              <option value="auto">Automático (recomendado)</option>
+              <option value="rapido">Siempre cada 3 s</option>
+              <option value="ahorro">Siempre cada 30 s</option>
+            </select>
+          </div>
           <button class="btn" type="submit">Guardar</button>
         </form>
-        <p class="note">El aforo máximo, la fila en caja y las cámaras se configuran en cada tienda (Configuración).
+        <p class="note">El aforo máximo, la fila en caja y las cámaras se configuran en cada tienda (Ajustes → Alertas).
           Las alertas aparecen arriba del Resumen y en la página de cada sede.</p>
+        <p class="note"><b>Automático</b>: cada tienda envía su estado en vivo cada 3 s mientras alguien tiene abierta la
+          página de esa sede y cada 30 s si no. Solo cambia la frescura de la vista en vivo y lo que tardan las alertas en
+          llegar aquí; las tiendas siguen contando igual y el historial no cambia.</p>
       </div>
 
-      <div class="card" id="securityCard">
+      <div class="card" id="securityCard" data-group="seguridad">
         <h3>Seguridad</h3>
         <form id="myPassForm">
           <div class="field"><label for="myCur">Tu contraseña actual</label>
@@ -117,7 +141,7 @@
         </div>
       </div>
 
-      <div class="card" id="smtpCard">
+      <div class="card" id="smtpCard" data-group="seguridad">
         <h3>Correo saliente <small>opcional</small></h3>
         <p class="note">Con el correo configurado, «¿Olvidaste tu contraseña?» envía un enlace. Sirve cualquier cuenta
           con SMTP (Gmail o Outlook con contraseña de aplicación, o el correo de tu dominio).</p>
@@ -132,10 +156,10 @@
         </form>
       </div>
 
-      <div class="card wide">
+      <div class="card wide" data-group="usuarios">
         <h3>Usuarios <small>quién puede entrar a este panel</small></h3>
         <div class="table-scroll">
-          <table>
+          <table class="rtable">
             <thead><tr><th>Nombre</th><th>Correo</th><th>Ve</th><th>Estado</th><th class="num"></th></tr></thead>
             <tbody id="usersList"></tbody>
           </table>
@@ -156,7 +180,9 @@
   </main>
 
   <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/vendor/ui.js"></script>
+  <script src="/static/hq.js"></script>
   <script src="/static/sedes.js"></script>
-  <script src="/static/backup.js"></script>
+  <script src="/vendor/backup.js"></script>
 </body>
 </html>

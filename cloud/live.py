@@ -1,7 +1,9 @@
 """Tiempo real y alertas en la sede principal.
 
-- Cada tienda envía su estado en vivo cada pocos segundos (`/api/agent/live`); se guarda en memoria, el
-  último por sede: personas ahora, posiciones en el plano, cajas, cámaras y alertas activas.
+- Cada tienda envía su estado en vivo (`/api/agent/live`); se guarda en memoria, el último por sede: personas
+  ahora, posiciones en el plano, cajas, cámaras y alertas activas. La respuesta le dice a la tienda cuándo
+  enviar el siguiente (`next_s`): en modo automático, cada 3 s mientras alguien mira la página de esa sede y
+  cada 30 s si no. No cambia nada en la tienda (la cámara se analiza igual) ni en el historial.
 - Las alertas de la tienda (aforo, fila, cámaras) se abren y cierran en la tabla `alerts` según lleguen o
   dejen de llegar, así queda el historial.
 - "Sede sin enviar datos" la decide la sede principal: una sede activa que lleva más de N minutos sin
@@ -18,13 +20,31 @@ from sqlalchemy.engine import Engine
 from cloud.cuentas import org_settings, save_org_settings
 from cloud.db import alerts, sites
 
-LIVE_STALE_S = 30           # un estado en vivo más viejo que esto ya no es "en vivo"
+LIVE_STALE_S = 30           # un estado en vivo más viejo que esto ya no es "en vivo" (o 2 envíos + margen)
+LIVE_FAST_S = 3
+LIVE_IDLE_S = 30
+VIEWER_HOLD_S = 60          # tras cerrar la página de la sede, se sigue rápido este tiempo
+LIVE_MODES = ("auto", "rapido", "ahorro")
 DEFAULT_OFFLINE_MIN = 10
 STORE_KINDS = ("aforo", "fila", "camara")
 
 
 def offline_minutes(conn, org_id: int) -> int:
     return int(org_settings(conn, org_id).get("alert_offline_min") or DEFAULT_OFFLINE_MIN)
+
+
+def live_mode(conn, org_id: int) -> str:
+    mode = org_settings(conn, org_id).get("live_mode")
+    return mode if mode in LIVE_MODES else "auto"
+
+
+def next_interval(mode: str, viewed_at: float | None, now: float) -> int:
+    """Cada cuántos segundos debe enviar la tienda su estado en vivo."""
+    if mode == "rapido":
+        return LIVE_FAST_S
+    if mode == "ahorro":
+        return LIVE_IDLE_S
+    return LIVE_FAST_S if viewed_at and now - viewed_at < VIEWER_HOLD_S else LIVE_IDLE_S
 
 
 def sync_store_alerts(conn, site_id: int, current: list[dict], now: float) -> None:
@@ -64,6 +84,7 @@ def refresh_offline(conn, org_id: int, now: float | None = None) -> None:
 
 def register(app: FastAPI, engine: Engine, current_user, agent_site, visible_sites) -> None:
     app.state.live = {}
+    app.state.live_viewers = {}   # sede → última vez que alguien abrió su página en vivo
 
     def site_for(user: dict, sid: int) -> dict:
         _, rows = visible_sites(user, None if user["role"] != "admin" else _org_of_site(sid))
@@ -85,25 +106,33 @@ def register(app: FastAPI, engine: Engine, current_user, agent_site, visible_sit
         if not isinstance(payload, dict):
             raise HTTPException(400, "El envío debe ser un objeto JSON.")
         now = time.time()
-        payload["received_at"] = now
-        app.state.live[site["id"]] = payload
         with engine.begin() as conn:
             conn.execute(update(sites).where(sites.c.id == site["id"]).values(last_sync_at=now))
             sync_store_alerts(conn, site["id"], payload.get("alerts") or [], now)
-        return {"ok": True}
+            mode = live_mode(conn, site["org_id"])
+        next_s = next_interval(mode, app.state.live_viewers.get(site["id"]), now)
+        payload["received_at"] = now
+        payload["next_s"] = next_s
+        app.state.live[site["id"]] = payload
+        return {"ok": True, "next_s": next_s}
 
     @app.get("/api/sites/{sid}/live")
     def site_live(sid: int, user: dict = Depends(current_user)):
         site = site_for(user, sid)
+        now = time.time()
+        app.state.live_viewers[sid] = now
         live = app.state.live.get(sid)
-        fresh = bool(live and time.time() - live["received_at"] < LIVE_STALE_S)
+        fresh = bool(live and now - live["received_at"] < max(LIVE_STALE_S, 2 * live.get("next_s", 0) + 5))
+        with engine.connect() as conn:
+            mode = live_mode(conn, site["org_id"])
         floorplan = None
         if site.get("floorplan_json"):
             import json
             floorplan = json.loads(site["floorplan_json"])
         return {"site": {"id": site["id"], "name": site["name"], "status": site["status"],
                          "last_sync_at": site["last_sync_at"]},
-                "live": live if fresh else None, "floorplan": floorplan}
+                "live": live if fresh else None, "floorplan": floorplan,
+                "live_mode": mode, "next_s": next_interval(mode, now, now)}
 
     @app.get("/api/alerts")
     def list_alerts(state: str = "open", site_id: int | None = None, limit: int = 100,
@@ -133,18 +162,32 @@ def register(app: FastAPI, engine: Engine, current_user, agent_site, visible_sit
     @app.get("/api/manage/alerts-config")
     def get_alert_config(user: dict = Depends(current_user)):
         with engine.connect() as conn:
-            return {"offline_min": offline_minutes(conn, user["org_id"])}
+            return {"offline_min": offline_minutes(conn, user["org_id"]), "live_mode": live_mode(conn, user["org_id"])}
 
     @app.put("/api/manage/alerts-config")
     async def set_alert_config(request: Request, user: dict = Depends(current_user)):
         if user["role"] != "hq":
             raise HTTPException(403, "Solo los usuarios de la sede principal pueden hacer esto.")
         try:
-            minutes = int((await request.json()).get("offline_min"))
-        except (TypeError, ValueError) as e:
-            raise HTTPException(400, "Escribe los minutos como número.") from e
-        if not 2 <= minutes <= 1440:
-            raise HTTPException(400, "Los minutos deben estar entre 2 y 1440.")
+            body = await request.json()
+        except ValueError as e:
+            raise HTTPException(400, "El envío no es JSON válido.") from e
+        if not isinstance(body, dict):
+            raise HTTPException(400, "El envío debe ser un objeto JSON.")
+        changes = {}
+        if "offline_min" in body:
+            try:
+                minutes = int(body["offline_min"])
+            except (TypeError, ValueError) as e:
+                raise HTTPException(400, "Escribe los minutos como número.") from e
+            if not 2 <= minutes <= 1440:
+                raise HTTPException(400, "Los minutos deben estar entre 2 y 1440.")
+            changes["alert_offline_min"] = minutes
+        if "live_mode" in body:
+            if body["live_mode"] not in LIVE_MODES:
+                raise HTTPException(400, "Modo de envío en vivo no válido.")
+            changes["live_mode"] = body["live_mode"]
         with engine.begin() as conn:
-            save_org_settings(conn, user["org_id"], alert_offline_min=minutes)
-        return {"offline_min": minutes}
+            if changes:
+                save_org_settings(conn, user["org_id"], **changes)
+            return {"offline_min": offline_minutes(conn, user["org_id"]), "live_mode": live_mode(conn, user["org_id"])}

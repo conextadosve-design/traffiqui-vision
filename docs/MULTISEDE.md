@@ -56,10 +56,16 @@ Solo números, nunca imágenes (tampoco el cuadro de referencia de la cámara):
 
 | Qué | Cada cuánto | Para qué |
 |---|---|---|
-| Estado en vivo: personas ahora, entradas/salidas, filas en caja, posiciones en el plano | 1–2 s | Tiempo real y 3D |
+| Estado en vivo: personas ahora, entradas/salidas, filas en caja, posiciones en el plano, alertas | 3 s si alguien mira la sede, si no 30 s | Tiempo real y alertas |
 | Personas (`global_tracks`), cruces de puertas, visitas a áreas, ocupación | ~1 min, en lotes | Registro completo y reportes |
 | Mapa de calor del plano (grillas de 5 min) | 5 min | Mapa de calor histórico |
 | Plano de la tienda | Al cambiar | Vista 3D en la nube |
+
+El ritmo del estado en vivo lo decide la sede principal en cada respuesta (*Sedes y usuarios → Alertas y en
+vivo*): **automático** (cada 3 s mientras alguien tiene abierta la página de esa sede y hasta 1 min después; si
+no, cada 30 s), **siempre 3 s** o **siempre 30 s**. Con el automático una sede envía unas 6.000 peticiones al día
+en vez de ~31.700. No cambia el conteo en la tienda ni el historial; solo la frescura de la vista en vivo y lo
+que tardan las alertas en llegar.
 
 Cada fila lleva sede + sesión + id local, así que reenviar un lote no duplica datos.
 
@@ -91,7 +97,7 @@ Sin licencia, cada empresa puede tener 1 sede (`FREE_SITES` en `cloud/licencia.p
 1b. ✅ **Todo local con instalador**: modo tienda / sede principal, primer uso, gestión de sedes, usuarios y
    licencias desde el panel, Tailscale, instalador de Windows generado por GitHub Actions
    (`packaging/`, `.github/workflows/instalador-windows.yml`). Guía: [INSTALACION.md](INSTALACION.md).
-2. ✅ **Tiempo real y vista de cada sede**: estado en vivo cada 3 s (personas en el plano, cajas, cámaras,
+2. ✅ **Tiempo real y vista de cada sede**: estado en vivo (personas en el plano, cajas, cámaras,
    alertas), página por sede con analítica completa, comparativas (semana anterior, mismo día del mes
    pasado) y alertas con historial (`cloud/live.py`, `cloud/site_reports.py`).
 3. **Reportes**: correo automático y Excel consolidado.
@@ -121,8 +127,9 @@ encargado de una sede solo ve la suya.
 
 Seguridad: contraseñas con scrypt; la sesión es una cookie `httponly` y en la base solo se guarda su
 hash; de la clave de sede también se guarda solo el hash. El primer uso (crear empresa y usuario) solo
-se acepta desde el propio PC. El puerto 9000 solo se abre a Tailscale y a la red local. Pendiente:
-límite de intentos de inicio de sesión y copias de seguridad automáticas de la base.
+se acepta desde el propio PC. El puerto 9000 solo se abre a Tailscale y a la red local. Tras 5 intentos
+fallidos se bloquea el acceso 15 minutos; la contraseña se recupera con el código `TQR-…` o por correo. La
+base se copia sola cada día (`C:\ProgramData\Traffiqui\copias`).
 
 ## Por decidir
 

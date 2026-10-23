@@ -73,6 +73,50 @@ def test_estado_en_vivo_y_plano_sin_fondo(env, tmp_path):
     db.close()
 
 
+def test_ritmo_en_vivo_automatico(env, tmp_path):
+    c, engine, site, post, _ = env
+    send = lambda: post("http://x", site["key"], "/api/agent/live", {"db_uid": "x" * 12, **live_state()})
+    assert send()["next_s"] == 30                      # nadie mira la sede: cada 30 s
+    d = c.get(f"/api/sites/{site['id']}/live").json()  # alguien abre la página en vivo
+    assert d["live"]["people_now"] == 3                # un estado de hace hasta 30 s sigue siendo "en vivo"
+    assert d["live_mode"] == "auto" and d["next_s"] == 3
+    assert send()["next_s"] == 3                       # la tienda pasa a cada 3 s
+    app = c.app
+    app.state.live_viewers[site["id"]] = time.time() - 61   # cerraron la página hace más de un minuto
+    assert send()["next_s"] == 30
+    # el agente de la tienda sigue el ritmo que le pide la sede principal
+    db = Database(tmp_path / "t.db")
+    db.start_session(0, {})
+    agent = CloudSync(db, post=post, live=live_state)
+    agent.connect("http://x", site["key"])
+    assert agent.live_interval == cloud_sync.LIVE_INTERVAL_S
+    assert agent.push_live() and agent.live_interval == 30
+    db.close()
+
+
+def test_ritmo_en_vivo_fijo(env):
+    c, engine, site, post, _ = env
+    send = lambda: post("http://x", site["key"], "/api/agent/live", {"db_uid": "x" * 12, **live_state()})
+    assert c.get("/api/manage/alerts-config").json() == {"offline_min": 10, "live_mode": "auto"}
+    assert c.put("/api/manage/alerts-config", json={"live_mode": "turbo"}).status_code == 400
+    assert c.put("/api/manage/alerts-config", json={"live_mode": "rapido"}).json()["live_mode"] == "rapido"
+    assert send()["next_s"] == 3
+    assert c.put("/api/manage/alerts-config", json={"live_mode": "ahorro"}).json()["offline_min"] == 10
+    c.get(f"/api/sites/{site['id']}/live")
+    assert send()["next_s"] == 30                      # aunque alguien mire, siempre cada 30 s
+
+
+def test_agente_con_sede_principal_antigua():
+    """Una sede principal sin `next_s` (versión anterior): la tienda sigue cada 3 s."""
+    agent = CloudSync.__new__(CloudSync)
+    agent.live_interval = 99
+    agent.live = lambda: {}
+    agent.state = {"state": "ok"}
+    agent.link = lambda: {"url": "http://x", "site_key": "tqs_x", "db_uid": "u"}
+    agent._post = lambda *a: {"ok": True}
+    assert agent.push_live() and agent.live_interval == cloud_sync.LIVE_INTERVAL_S
+
+
 def test_alertas_se_abren_cierran_y_guardan_historial(env):
     c, engine, site, post, _ = env
     aforo = {"kind": "aforo", "ref": "", "title": "Aforo superado: 31 personas", "message": "", "since": time.time() - 40}

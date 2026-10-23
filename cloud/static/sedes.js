@@ -64,8 +64,8 @@
           : `<button class="btn small" data-activate="${s.id}">${s.status === 'suspended' ? 'Reactivar' : 'Activar'}</button>`,
       ].join(' ');
       return `<tr><td class="site-name">${esc(s.name)}<div class="note">${ago(s.last_sync_at)}</div></td>
-        <td><span class="state ${state[0]}">${state[1]}</span></td>
-        <td>${s.key_hint ? `<code>…${esc(s.key_hint)}</code>` : '–'}</td><td class="num nowrap">${actions}</td></tr>`;
+        <td data-label="Estado"><span class="state ${state[0]}">${state[1]}</span></td>
+        <td data-label="Clave">${s.key_hint ? `<code>…${esc(s.key_hint)}</code>` : '–'}</td><td class="num nowrap actions">${actions}</td></tr>`;
     }).join('') : '<tr><td colspan="4" class="empty">Todavía no hay sedes. Agrega la primera aquí abajo.</td></tr>';
 
     $('#licenseText').innerHTML = lic.code && !lic.error
@@ -78,8 +78,8 @@
       const sees = u.role === 'hq' ? 'Todas las sedes' : `Solo ${esc(site?.name || 'una sede')}`;
       const btn = u.id === d.me ? '<span class="note">tú</span>'
         : `<button class="btn small" data-pass="${u.id}">Contraseña</button> <button class="btn small${u.active ? ' danger' : ''}" data-user="${u.id}" data-active="${u.active ? 0 : 1}">${u.active ? 'Desactivar' : 'Activar'}</button>`;
-      return `<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${sees}</td>
-        <td><span class="state ${u.active ? 'ok' : ''}">${u.active ? 'Activo' : 'Desactivado'}</span></td><td class="num">${btn}</td></tr>`;
+      return `<tr><td>${esc(u.name)}</td><td data-label="Correo">${esc(u.email)}</td><td data-label="Ve">${sees}</td>
+        <td data-label="Estado"><span class="state ${u.active ? 'ok' : ''}">${u.active ? 'Activo' : 'Desactivado'}</span></td><td class="num actions">${btn}</td></tr>`;
     }).join('');
     $('#uSite').innerHTML = d.sites.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('');
   }
@@ -172,10 +172,11 @@
       catch (e) { toast(e.message, true); }
     });
     smtpLoad().catch(() => {});
-    api('/api/manage/alerts-config').then(c => { $('#offlineMin').value = c.offline_min; }).catch(() => {});
+    api('/api/manage/alerts-config').then(c => { $('#offlineMin').value = c.offline_min; $('#liveMode').value = c.live_mode; }).catch(() => {});
     $('#offlineForm').addEventListener('submit', async ev => {
       ev.preventDefault();
-      try { await api('/api/manage/alerts-config', 'PUT', { offline_min: Number($('#offlineMin').value) }); toast('Guardado.'); }
+      const body = { offline_min: Number($('#offlineMin').value), live_mode: $('#liveMode').value };
+      try { await api('/api/manage/alerts-config', 'PUT', body); toast('Guardado.'); }
       catch (e) { toast(e.message, true); }
     });
     load();

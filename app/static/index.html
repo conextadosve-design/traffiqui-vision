@@ -2,25 +2,30 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Traffiqui Vision</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17202B">
+  <title>Traffiqui</title>
+  <link rel="icon" href="/vendor/icono.svg" type="image/svg+xml">
+  <link rel="manifest" href="/vendor/manifest.webmanifest">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span>Traffiqui</span> Vision <small>MVP · 1 cámara</small></div>
-    <nav class="tabs" role="tablist">
-      <button class="tab" role="tab" data-view="live" aria-selected="true">En vivo</button>
-      <button class="tab" role="tab" data-view="analytics" aria-selected="false">Analítica</button>
-      <button class="tab" role="tab" data-view="buyers" aria-selected="false">Pasaron por caja</button>
-      <button class="tab" role="tab" data-view="store" aria-selected="false">Tienda 3D</button>
-      <button class="tab" role="tab" data-view="plan" aria-selected="false">Plano</button>
-      <button class="tab" role="tab" data-view="settings" aria-selected="false">Configuración</button>
+    <div class="brand"><span>Traffiqui</span> <small>Tienda</small></div>
+    <nav class="tabs" role="tablist" aria-label="Secciones">
+      <button class="tab" role="tab" data-view="live" aria-selected="true"><svg class="i" aria-hidden="true"><use href="#i-vivo"/></svg>En vivo</button>
+      <button class="tab" role="tab" data-view="analytics" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-informes"/></svg>Informes</button>
+      <button class="tab" role="tab" data-view="buyers" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-caja"/></svg>Cajas</button>
+      <button class="tab" role="tab" data-view="store" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-cubo"/></svg>Mapa 3D</button>
+      <span class="tab-sep" aria-hidden="true"></span>
+      <button class="tab desk" role="tab" data-view="plan" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-plano"/></svg>Plano</button>
+      <button class="tab" role="tab" data-view="settings" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-ajustes"/></svg>Ajustes</button>
     </nav>
     <div class="status">
-      <span class="pill" id="pillCam">Cámara</span>
-      <span class="pill" id="pillServer">Servidor</span>
-      <span id="fpsTop">– FPS</span>
+      <span class="pill hide-sm" id="pillCam">Cámara</span>
+      <span class="pill" id="pillServer">Conectando…</span>
+      <span id="fpsTop" hidden>– FPS</span>
+      <button class="help-btn" id="helpBtn" type="button" title="Ver la guía de nuevo" aria-label="Ver la guía de nuevo">?</button>
     </div>
   </header>
 
@@ -29,6 +34,13 @@
 
     <!-- ================= EN VIVO ================= -->
     <section class="view" id="view-live">
+      <div class="page-head"><div><h1>En vivo</h1><p>Lo que pasa en tu tienda ahora mismo.</p></div></div>
+      <div class="hero-kpis">
+        <div class="kpi hero"><div class="label">Personas ahora</div><div class="value" id="kNow">–</div><div class="sub" id="kPeak">Pico: –</div></div>
+        <div class="kpi hero"><div class="label">Visitas hoy</div><div class="value" id="kToday">–</div><div class="sub">personas distintas</div></div>
+        <div class="kpi hero in"><div class="label">Pasaron por caja hoy</div><div class="value" id="kBuyers">–</div><div class="sub" id="kConv">% de las visitas: –</div></div>
+        <div class="kpi hero"><div class="label">Tiempo promedio en la tienda</div><div class="value" id="kDwell">–</div><div class="sub" id="kMedian">Mediana: –</div></div>
+      </div>
       <div class="live">
         <div>
           <div class="camsel" id="camSelBar" hidden>
@@ -40,68 +52,70 @@
             <img id="video" src="/video" alt="Video en vivo con recuadros, rastros y mapa de calor">
             <canvas id="drawCanvas"></canvas>
           </div>
-          <div class="drawbar">
-            <button class="btn" id="btnDrawLine">Dibujar línea</button>
-            <button class="btn" id="btnInvert">Invertir dirección</button>
-            <button class="btn" id="btnDrawZone">Dibujar zona</button>
+          <div class="draw-status">
+            <div class="drawhint" id="drawHint"></div>
             <button class="btn" id="btnCancelDraw" hidden>Cancelar</button>
-            <span style="flex:1"></span>
-            <div class="seg" role="group" aria-label="Modo del mapa de calor">
-              <button data-heatmode="live" aria-pressed="true">Calor en vivo</button>
-              <button data-heatmode="accum" aria-pressed="false">Acumulado</button>
-            </div>
-            <button class="btn" id="btnResetHeat">Reiniciar mapa de calor</button>
           </div>
-          <div class="drawhint" id="drawHint"></div>
-          <p class="note">Si alguien sale del cuadro y vuelve a entrar recibe un ID nuevo (no hay reidentificación),
-            por eso las "personas únicas" son una aproximación.</p>
+          <details class="more" id="videoTools">
+            <summary><svg class="i" aria-hidden="true"><use href="#i-ojo"/></svg>Opciones del video <small>qué se dibuja, línea de entrada y zonas</small></summary>
+            <div class="more-body">
+              <div class="switches">
+                <label class="switch"><input type="checkbox" data-cfg="show_boxes">Recuadros</label>
+                <label class="switch"><input type="checkbox" data-cfg="show_trails">Rastros</label>
+                <label class="switch"><input type="checkbox" data-cfg="show_heatmap">Mapa de calor</label>
+                <label class="switch"><input type="checkbox" data-cfg="show_zones">Zonas</label>
+                <label class="switch"><input type="checkbox" data-cfg="show_line">Línea</label>
+                <label class="switch"><input type="checkbox" data-cfg="privacy_blur">Ocultar caras</label>
+              </div>
+              <div class="drawbar">
+                <button class="btn" id="btnDrawLine">Dibujar línea de entrada</button>
+                <button class="btn" id="btnInvert">Invertir dirección</button>
+                <button class="btn" id="btnDrawZone">Dibujar zona</button>
+                <span class="grow"></span>
+                <div class="seg" role="group" aria-label="Modo del mapa de calor">
+                  <button data-heatmode="live" aria-pressed="true">Calor en vivo</button>
+                  <button data-heatmode="accum" aria-pressed="false">Acumulado</button>
+                </div>
+                <button class="btn" id="btnResetHeat">Reiniciar calor</button>
+              </div>
+              <p class="note">Cada persona tiene un color y un número mientras está en cámara. Si sale del cuadro y vuelve a
+                entrar puede recibir un número nuevo, por eso las visitas son una aproximación muy cercana.</p>
+            </div>
+          </details>
         </div>
 
         <aside class="side">
           <div class="card">
-            <div class="kpis">
-              <div class="kpi"><div class="label">Personas ahora</div><div class="value" id="kNow">–</div>
-                <div class="sub" id="kPeak">Pico: –</div></div>
-              <div class="kpi"><div class="label">Únicas hoy</div><div class="value" id="kToday">–</div>
-                <div class="sub" id="kSession">Sesión: –</div></div>
-              <div class="kpi in"><div class="label">Entradas (línea)</div><div class="value" id="kIn">–</div></div>
-              <div class="kpi"><div class="label">Salidas (línea)</div><div class="value" id="kOut">–</div></div>
-              <div class="kpi"><div class="label">Permanencia prom.</div><div class="value" id="kDwell">–</div>
-                <div class="sub" id="kMedian">Mediana: –</div></div>
-              <div class="kpi"><div class="label">FPS</div><div class="value" id="kFps">–</div>
-                <div class="sub" id="kInfer">–</div></div>
-              <div class="kpi in"><div class="label">Pasaron por caja hoy</div><div class="value" id="kBuyers">–</div>
-                <div class="sub" id="kConv">% de las visitas: –</div></div>
-              <div class="kpi"><div class="label">Puertas (hoy, sesión)</div><div class="value" id="kDoors">–</div>
-                <div class="sub" id="kDoorsSub">entradas / salidas</div></div>
-            </div>
-          </div>
-          <div class="card">
-            <h3>Capas del video</h3>
-            <div class="switches">
-              <label class="switch"><input type="checkbox" data-cfg="show_boxes">Recuadros</label>
-              <label class="switch"><input type="checkbox" data-cfg="show_trails">Rastros</label>
-              <label class="switch"><input type="checkbox" data-cfg="show_heatmap">Mapa de calor</label>
-              <label class="switch"><input type="checkbox" data-cfg="show_zones">Zonas</label>
-              <label class="switch"><input type="checkbox" data-cfg="show_line">Línea</label>
-              <label class="switch"><input type="checkbox" data-cfg="privacy_blur">Privacidad</label>
-            </div>
-          </div>
-          <div class="card">
-            <h3>Personas en cuadro <small id="peopleCount"></small></h3>
+            <h3>En cámara ahora <small id="peopleCount"></small></h3>
             <div class="people" id="people"><span class="empty">Nadie en cuadro.</span></div>
           </div>
           <div class="card" id="liveZonesCard" hidden>
-            <h3>Zonas <small>sesión actual</small></h3>
+            <h3>Zonas <small>desde que se abrió Traffiqui</small></h3>
             <table><thead><tr><th>Zona</th><th class="num">Ahora</th><th class="num">Pasaron</th><th class="num">Se detuvieron</th></tr></thead>
               <tbody id="liveZones"></tbody></table>
           </div>
+          <details class="more">
+            <summary><svg class="i" aria-hidden="true"><use href="#i-informes"/></svg>Más cifras</summary>
+            <div class="more-body">
+              <div class="kpis">
+                <div class="kpi in"><div class="label">Entradas (línea)</div><div class="value" id="kIn">–</div></div>
+                <div class="kpi"><div class="label">Salidas (línea)</div><div class="value" id="kOut">–</div></div>
+                <div class="kpi"><div class="label">Puertas del plano</div><div class="value" id="kDoors">–</div>
+                  <div class="sub" id="kDoorsSub">entradas / salidas</div></div>
+                <div class="kpi"><div class="label">Visitas desde que abrió</div><div class="value" id="kSession">–</div>
+                  <div class="sub">en esta sesión</div></div>
+                <div class="kpi wide"><div class="label">Velocidad de análisis</div><div class="value" id="kFps">–</div>
+                  <div class="sub" id="kInfer">–</div></div>
+              </div>
+            </div>
+          </details>
         </aside>
       </div>
     </section>
 
     <!-- ================= ANALÍTICA ================= -->
     <section class="view" id="view-analytics" hidden>
+      <div class="page-head"><div><h1>Informes</h1><p>Cuánta gente vino, a qué horas y cuánto tiempo se quedó.</p></div></div>
       <div class="filters">
         <div class="seg" role="group" aria-label="Rango">
           <button data-range="today" aria-pressed="true">Hoy</button>
@@ -114,7 +128,7 @@
           <input type="datetime-local" id="rangeStart" aria-label="Desde"> –
           <input type="datetime-local" id="rangeEnd" aria-label="Hasta">
         </span>
-        <label>Intervalo
+        <label>Agrupar cada
           <select id="bucket">
             <option value="5">5 min</option>
             <option value="15" selected>15 min</option>
@@ -122,35 +136,35 @@
             <option value="1440">1 día</option>
           </select>
         </label>
-        <button class="btn" id="btnRefresh">Actualizar</button>
+        <button class="btn" id="btnRefresh"><svg class="i sm" aria-hidden="true"><use href="#i-recargar"/></svg>Actualizar</button>
         <span class="spacer"></span>
-        <button class="btn primary" id="btnCsv">Exportar CSV</button>
+        <button class="btn primary" id="btnCsv"><svg class="i sm" aria-hidden="true"><use href="#i-descarga"/></svg>Descargar para Excel</button>
       </div>
 
       <div class="totals">
-        <div class="kpi"><div class="label">Personas únicas</div><div class="value" id="tUnique">–</div></div>
+        <div class="kpi"><div class="label">Visitas</div><div class="value" id="tUnique">–</div><div class="sub">personas distintas</div></div>
         <div class="kpi in"><div class="label">Entradas</div><div class="value" id="tIn">–</div></div>
         <div class="kpi"><div class="label">Salidas</div><div class="value" id="tOut">–</div></div>
-        <div class="kpi"><div class="label">Pico de ocupación</div><div class="value" id="tPeak">–</div><div class="sub" id="tPeakAt"></div></div>
-        <div class="kpi"><div class="label">Permanencia prom.</div><div class="value" id="tDwell">–</div><div class="sub" id="tMedian"></div></div>
+        <div class="kpi"><div class="label">Máximo a la vez</div><div class="value" id="tPeak">–</div><div class="sub" id="tPeakAt"></div></div>
+        <div class="kpi"><div class="label">Tiempo promedio</div><div class="value" id="tDwell">–</div><div class="sub" id="tMedian"></div></div>
       </div>
 
       <div class="charts">
         <div class="card wide">
-          <h3>Ocupación en el tiempo <small>personas en cuadro</small></h3>
+          <h3>Personas en la tienda a lo largo del día</h3>
           <div class="legend"><span><i style="background:var(--chart-2)"></i>Promedio</span><span><i style="background:var(--chart-1)"></i>Máximo</span></div>
           <div class="chart-box"><canvas id="chOcc" aria-label="Ocupación en el tiempo"></canvas></div>
         </div>
         <div class="card">
-          <h3>Personas únicas por intervalo</h3>
+          <h3>Visitas por intervalo</h3>
           <div class="chart-box"><canvas id="chUnique" aria-label="Personas únicas por intervalo"></canvas></div>
         </div>
         <div class="card">
-          <h3>Distribución de permanencia</h3>
+          <h3>¿Cuánto tiempo se quedan?</h3>
           <div class="chart-box"><canvas id="chDwell" aria-label="Distribución de permanencia"></canvas></div>
         </div>
         <div class="card wide">
-          <h3>Entradas vs. salidas por hora</h3>
+          <h3>Entradas y salidas por hora <small>línea de entrada</small></h3>
           <div class="legend"><span><i style="background:var(--chart-1)"></i>Entradas</span><span><i style="background:var(--chart-2)"></i>Salidas</span></div>
           <div class="chart-box"><canvas id="chLine" aria-label="Entradas y salidas por hora"></canvas></div>
         </div>
@@ -203,6 +217,7 @@
 
     <!-- ================= PASARON POR CAJA ================= -->
     <section class="view" id="view-buyers" hidden>
+      <div class="page-head"><div><h1>Cajas</h1><p>Cuántas personas pasaron por caja, qué recorrieron antes y cómo van las filas.</p></div></div>
       <div class="filters">
         <div class="seg" role="group" aria-label="Rango">
           <button data-brange="today" aria-pressed="true">Hoy</button>
@@ -215,9 +230,9 @@
           <input type="datetime-local" id="bStart" aria-label="Desde"> –
           <input type="datetime-local" id="bEnd" aria-label="Hasta">
         </span>
-        <button class="btn" id="bRefresh">Actualizar</button>
+        <button class="btn" id="bRefresh"><svg class="i sm" aria-hidden="true"><use href="#i-recargar"/></svg>Actualizar</button>
         <span class="spacer"></span>
-        <button class="btn primary" id="bCsv">Exportar CSV</button>
+        <button class="btn primary" id="bCsv"><svg class="i sm" aria-hidden="true"><use href="#i-descarga"/></svg>Descargar para Excel</button>
       </div>
       <div class="alert info" id="bNoCheckout" hidden><div><b>Falta la zona de cajas.</b>
         <p>En la pestaña Plano dibuja un área, cámbiale el tipo a "Zona de cajas" y asígnale la cámara que la ve.
@@ -294,6 +309,7 @@
 
     <!-- ================= TIENDA 3D ================= -->
     <section class="view" id="view-store" hidden>
+      <div class="page-head"><div><h1>Mapa 3D</h1><p>Tu tienda vista desde arriba: por dónde camina la gente y qué pasillos tienen más movimiento.</p></div></div>
       <div class="filters">
         <div class="seg" role="group" aria-label="Rango">
           <button data-s3drange="today" aria-pressed="true">Hoy</button>
@@ -312,8 +328,8 @@
           <button data-s3dheat="live" aria-pressed="false">Calor en vivo</button>
         </div>
         <span class="spacer"></span>
-        <button class="btn" id="s3dRefresh">Actualizar</button>
-        <button class="btn primary" id="s3dCsv">Exportar CSV</button>
+        <button class="btn" id="s3dRefresh"><svg class="i sm" aria-hidden="true"><use href="#i-recargar"/></svg>Actualizar</button>
+        <button class="btn primary" id="s3dCsv"><svg class="i sm" aria-hidden="true"><use href="#i-descarga"/></svg>Descargar para Excel</button>
       </div>
       <div class="store-wrap">
         <div class="card store-stage">
@@ -354,6 +370,7 @@
 
     <!-- ================= PLANO ================= -->
     <section class="view" id="view-plan" hidden>
+      <div class="page-head"><div><h1>Plano de la tienda</h1><p>Dibújalo una vez: paredes, góndolas, cajas, puertas y cámaras. Sigue los pasos de arriba.</p></div></div>
       <div class="plan-steps" id="planSteps" aria-label="Pasos para armar el plano"></div>
       <div class="plan-wrap">
         <div class="plan-tools card" id="planTools" aria-label="Herramientas"></div>
@@ -402,111 +419,20 @@
       <div class="dialog-actions"><button class="btn primary" id="planHelpClose">Entendido</button></div>
     </dialog>
 
-    <!-- ================= CONFIGURACIÓN ================= -->
+    <!-- ================= AJUSTES ================= -->
     <section class="view" id="view-settings" hidden>
+      <div class="page-head"><div><h1>Ajustes</h1><p>Se guardan solos y se aplican al momento, sin reiniciar.</p></div></div>
+      <nav class="subtabs" id="settingsNav" data-scope="#view-settings" aria-label="Partes de los ajustes">
+        <button class="subtab" data-target="camaras"><svg class="i sm" aria-hidden="true"><use href="#i-camara"/></svg>Cámaras</button>
+        <button class="subtab" data-target="conteo"><svg class="i sm" aria-hidden="true"><use href="#i-personas"/></svg>Conteo y cajas</button>
+        <button class="subtab" data-target="alertas"><svg class="i sm" aria-hidden="true"><use href="#i-campana"/></svg>Alertas</button>
+        <button class="subtab" data-target="sede"><svg class="i sm" aria-hidden="true"><use href="#i-enlace"/></svg>Sede principal</button>
+        <button class="subtab" data-target="copias"><svg class="i sm" aria-hidden="true"><use href="#i-copia"/></svg>Copias</button>
+        <button class="subtab" data-target="avanzado"><svg class="i sm" aria-hidden="true"><use href="#i-avanzado"/></svg>Avanzado</button>
+      </nav>
       <div class="settings">
-        <div class="card">
-          <h2>Cámara</h2>
-          <div class="field">
-            <label for="camSelect">Cámara</label>
-            <div class="row">
-              <select id="camSelect"><option>Buscando…</option></select>
-              <button class="btn" id="btnScanCams">Buscar cámaras</button>
-              <button class="btn" id="btnTestCam">Probar</button>
-              <button class="btn primary" id="btnUseCam">Usar esta cámara</button>
-            </div>
-            <span class="help" id="camHelp">Se buscan los índices 0 a 5.</span>
-            <img class="cam-preview" id="camPreview" alt="Vista de prueba de la cámara" hidden>
-          </div>
-          <div class="field">
-            <label for="resSelect">Resolución</label>
-            <select id="resSelect">
-              <option value="640x480">640 × 480 (recomendado en CPU)</option>
-              <option value="800x600">800 × 600</option>
-              <option value="1280x720">1280 × 720</option>
-              <option value="1920x1080">1920 × 1080</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="detSelect">Detector de personas</label>
-            <select id="detSelect" data-cfg-select="detector">
-              <option value="preciso">Preciso (recomendado)</option>
-              <option value="rapido">Rápido (para PCs con muchas cámaras)</option>
-            </select>
-            <span class="help">El rápido usa la mitad de CPU pero se pierde más gente lejana o tapada.</span>
-          </div>
-          <div class="field">
-            <label for="conf">Confianza mínima <output data-for="confidence"></output></label>
-            <input type="range" id="conf" min="0.1" max="0.95" step="0.05" data-cfg-range="confidence">
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>Seguimiento y rastros</h2>
-          <div class="field">
-            <label for="trail">Duración del rastro <output data-for="trail_seconds"></output></label>
-            <input type="range" id="trail" min="1" max="10" step="0.5" data-cfg-range="trail_seconds" data-unit=" s">
-          </div>
-          <div class="field">
-            <span class="label">Punto de seguimiento</span>
-            <div class="row">
-              <label class="radio"><input type="radio" name="tp" value="center" data-cfg-radio="track_point">Centro del recuadro</label>
-              <label class="radio"><input type="radio" name="tp" value="bottom" data-cfg-radio="track_point">Base (pies)</label>
-            </div>
-            <span class="help">Con cámara cenital en tienda, usa "Base".</span>
-          </div>
-          <div class="field">
-            <label for="minTrack">Duración mínima para contar a una persona <output data-for="min_track_seconds"></output></label>
-            <input type="range" id="minTrack" min="0" max="5" step="0.5" data-cfg-range="min_track_seconds" data-unit=" s">
-          </div>
-          <div class="field">
-            <label for="lost">Espera antes de dar por perdido un track <output data-for="lost_track_seconds"></output></label>
-            <input type="range" id="lost" min="0.5" max="10" step="0.5" data-cfg-range="lost_track_seconds" data-unit=" s">
-          </div>
-        </div>
-
-        <div class="card">
-          <h2>Mapa de calor y zonas</h2>
-          <div class="field">
-            <label for="half">Vida media del mapa en vivo <output data-for="heatmap_half_life"></output></label>
-            <input type="range" id="half" min="5" max="300" step="5" data-cfg-range="heatmap_half_life" data-unit=" s">
-          </div>
-          <div class="field">
-            <label for="stop">Umbral de "se detuvo" en una zona <output data-for="stop_seconds"></output></label>
-            <input type="range" id="stop" min="1" max="120" step="1" data-cfg-range="stop_seconds" data-unit=" s">
-          </div>
-          <div class="field">
-            <label for="buyerSecs">Tiempo en zona de cajas para contar como "pasó por caja" <output data-for="buyer_seconds"></output></label>
-            <input type="range" id="buyerSecs" min="5" max="180" step="5" data-cfg-range="buyer_seconds" data-unit=" s">
-            <span class="help">Se suma todo el tiempo que la persona pasa en las zonas del cliente de las cajas del plano.</span>
-          </div>
-          <div class="field">
-            <label for="staffHours">Considerar personal a quien pase más de <output data-for="staff_hours"></output></label>
-            <input type="range" id="staffHours" min="0" max="12" step="0.5" data-cfg-range="staff_hours" data-unit=" h">
-            <span class="help">Trabajadores y personal extra: se excluyen de todas las estadísticas de clientes. 0 = desactivado.</span>
-          </div>
-          <div class="field">
-            <label for="staffZone">Tiempo en una zona de personal para marcar a alguien como personal <output data-for="staff_zone_seconds"></output></label>
-            <input type="range" id="staffZone" min="5" max="120" step="5" data-cfg-range="staff_zone_seconds" data-unit=" s">
-            <span class="help">Zonas de personal: detrás de cada caja (se crean solas) o las que marques en el Plano (detrás del mostrador, depósito).</span>
-          </div>
-          <div class="field">
-            <label for="alertCap">Aforo máximo (alerta) <output data-for="alert_capacity"></output></label>
-            <input type="range" id="alertCap" min="0" max="300" step="5" data-cfg-range="alert_capacity" data-unit=" personas">
-            <span class="help">Avisa si hay más personas a la vez durante 30 s. 0 = sin alerta.</span>
-          </div>
-          <div class="field">
-            <label for="alertQueue">Fila larga en caja (alerta, opcional) <output data-for="alert_queue_people"></output></label>
-            <input type="range" id="alertQueue" min="0" max="15" step="1" data-cfg-range="alert_queue_people" data-unit=" personas">
-            <span class="help">Avisa si una caja tiene esta cantidad de personas o más durante 1 minuto. 0 = sin alerta.</span>
-          </div>
-          <div class="field">
-            <span class="label">Privacidad</span>
-            <label class="switch"><input type="checkbox" data-cfg="privacy_blur">Desenfocar la mitad superior de cada recuadro (cara) en el video</label>
-          </div>
-        </div>
-
-        <div class="card wide" id="camsCard">
+        <!-- ---- Cámaras ---- -->
+        <div class="card wide" id="camsCard" data-group="camaras">
           <h2>Cámaras de la tienda <small>webcam USB, CCTV por RTSP o video de prueba</small></h2>
           <div class="table-scroll">
             <table class="cams-table">
@@ -533,25 +459,55 @@
             Con varias cámaras en esta PC limita cada una a 5–8 FPS para repartir el CPU.</p>
         </div>
 
-        <div class="card">
-          <h2>Reidentificación</h2>
+        <div class="card" data-group="camaras">
+          <h2>Cámara principal</h2>
           <div class="field">
-            <label for="reentry">Ventana de re-entrada en la misma cámara <output data-for="reid_reentry_s"></output></label>
-            <input type="range" id="reentry" min="0" max="120" step="5" data-cfg-range="reid_reentry_s" data-unit=" s">
-            <span class="help">Si alguien sale y vuelve dentro de este tiempo con ropa parecida, conserva su ID. 0 = desactivado.</span>
+            <label for="camSelect">Cámara</label>
+            <div class="row">
+              <select id="camSelect"><option>Buscando…</option></select>
+              <button class="btn" id="btnScanCams">Buscar cámaras</button>
+              <button class="btn" id="btnTestCam">Probar</button>
+              <button class="btn primary" id="btnUseCam">Usar esta cámara</button>
+            </div>
+            <span class="help" id="camHelp">Se buscan los índices 0 a 5.</span>
+            <img class="cam-preview" id="camPreview" alt="Vista de prueba de la cámara" hidden>
           </div>
           <div class="field">
-            <label for="handoff">Ventana de traspaso entre cámaras <output data-for="reid_handoff_s"></output></label>
-            <input type="range" id="handoff" min="0" max="60" step="1" data-cfg-range="reid_handoff_s" data-unit=" s">
-            <span class="help">Tiempo máximo para pasar del campo de una cámara al de otra. Con cámaras que se superponen, la unión es inmediata.</span>
-          </div>
-          <div class="field">
-            <label class="switch"><input type="checkbox" data-cfg="show_plan_areas">Dibujar las áreas del plano sobre el video (sirve para comprobar la calibración)</label>
+            <label for="resSelect">Resolución</label>
+            <select id="resSelect">
+              <option value="640x480">640 × 480 (recomendado en CPU)</option>
+              <option value="800x600">800 × 600</option>
+              <option value="1280x720">1280 × 720</option>
+              <option value="1920x1080">1920 × 1080</option>
+            </select>
           </div>
         </div>
 
-        <div class="card">
-          <h2>Línea y zonas</h2>
+        <div class="card" data-group="camaras">
+          <h2>Detección de personas</h2>
+          <div class="field">
+            <label for="detSelect">Detector</label>
+            <select id="detSelect" data-cfg-select="detector">
+              <option value="preciso">Preciso (recomendado)</option>
+              <option value="rapido">Rápido (para PCs con muchas cámaras)</option>
+            </select>
+            <span class="help">El rápido usa la mitad de CPU pero se pierde más gente lejana o tapada.</span>
+          </div>
+          <div class="field">
+            <label for="conf">Seguridad mínima para contar a alguien <output data-for="confidence"></output></label>
+            <input type="range" id="conf" min="0.1" max="0.95" step="0.05" data-cfg-range="confidence">
+            <span class="help">Más alto = menos errores pero se escapa más gente. 0,65 es un buen punto de partida.</span>
+          </div>
+          <div class="field">
+            <span class="label">Privacidad</span>
+            <label class="switch"><input type="checkbox" data-cfg="privacy_blur">Ocultar las caras en el video (desenfoca la parte de arriba de cada persona)</label>
+            <span class="help">Traffiqui nunca guarda video ni fotos de las personas.</span>
+          </div>
+        </div>
+
+        <!-- ---- Conteo y cajas ---- -->
+        <div class="card" data-group="conteo">
+          <h2>Línea de entrada y zonas</h2>
           <div class="field">
             <span class="label">Línea virtual</span>
             <span class="help" id="lineInfo">Sin línea.</span>
@@ -567,28 +523,69 @@
             <div class="row">
               <button class="btn" data-goto-draw="zone">Dibujar zona</button>
             </div>
-            <span class="help">Los cambios se guardan solos y se aplican sin reiniciar.</span>
+            <span class="help">Para análisis por pasillos con varias cámaras, usa mejor las áreas del <b>Plano</b>.</span>
           </div>
         </div>
 
-        <div class="card" id="cloudCard">
+        <div class="card" data-group="conteo">
+          <h2>Cajas y personal</h2>
+          <div class="field">
+            <label for="buyerSecs">Tiempo en caja para contar «pasó por caja» <output data-for="buyer_seconds"></output></label>
+            <input type="range" id="buyerSecs" min="5" max="180" step="5" data-cfg-range="buyer_seconds" data-unit=" s">
+            <span class="help">Se suma todo el tiempo que la persona pasa frente a las cajas del plano.</span>
+          </div>
+          <div class="field">
+            <label for="staffHours">Es personal quien pase más de <output data-for="staff_hours"></output></label>
+            <input type="range" id="staffHours" min="0" max="12" step="0.5" data-cfg-range="staff_hours" data-unit=" h">
+            <span class="help">Trabajadores: no cuentan en ninguna cifra de clientes. 0 = desactivado.</span>
+          </div>
+          <div class="field">
+            <label for="staffZone">Tiempo en zona de personal para marcar a alguien como personal <output data-for="staff_zone_seconds"></output></label>
+            <input type="range" id="staffZone" min="5" max="120" step="5" data-cfg-range="staff_zone_seconds" data-unit=" s">
+            <span class="help">Zonas de personal: detrás de cada caja (se crean solas) o las que marques en el Plano (mostrador, depósito).</span>
+          </div>
+          <div class="field">
+            <label for="stop">Cuenta como «se detuvo» en una zona tras <output data-for="stop_seconds"></output></label>
+            <input type="range" id="stop" min="1" max="120" step="1" data-cfg-range="stop_seconds" data-unit=" s">
+          </div>
+        </div>
+
+        <!-- ---- Alertas ---- -->
+        <div class="card" data-group="alertas">
+          <h2>Alertas</h2>
+          <p class="note">Aparecen arriba de la pantalla y llegan a la sede principal. Las de cámara (sin señal, tapada o
+            movida) están siempre activas.</p>
+          <div class="field">
+            <label for="alertCap">Aforo máximo <output data-for="alert_capacity"></output></label>
+            <input type="range" id="alertCap" min="0" max="300" step="5" data-cfg-range="alert_capacity" data-unit=" personas">
+            <span class="help">Avisa si hay más personas a la vez durante 30 s. 0 = sin alerta.</span>
+          </div>
+          <div class="field">
+            <label for="alertQueue">Fila larga en caja <output data-for="alert_queue_people"></output></label>
+            <input type="range" id="alertQueue" min="0" max="15" step="1" data-cfg-range="alert_queue_people" data-unit=" personas">
+            <span class="help">Avisa si una caja tiene esta cantidad de personas o más durante 1 minuto. 0 = sin alerta.</span>
+          </div>
+        </div>
+
+        <!-- ---- Sede principal ---- -->
+        <div class="card" id="cloudCard" data-group="sede">
           <h2>Sede principal <small>multisede</small></h2>
-          <p class="help">Conecta esta tienda con el servidor central para que gerencia y marketing vean sus datos junto a
-            los de las demás sedes. Solo se envían números y posiciones en el plano, nunca video ni imágenes. Si se corta
-            internet, la tienda sigue contando y envía lo pendiente al volver.</p>
+          <p class="help">Conecta esta tienda con el PC de gerencia para que vean sus datos junto a los de las demás sedes.
+            Solo se envían números y posiciones en el plano, nunca video ni imágenes. Si se corta internet, la tienda sigue
+            contando y envía lo pendiente al volver.</p>
           <div class="field">
             <span class="label">Estado</span>
             <div class="row"><span class="pill" id="cloudPill">Sin conectar</span><span class="help" id="cloudInfo"></span></div>
           </div>
           <form id="cloudForm">
             <div class="field">
-              <label for="cloudUrl">Dirección del servidor</label>
-              <input type="url" id="cloudUrl" placeholder="https://panel.traffiqui.com" autocomplete="off">
+              <label for="cloudUrl">Dirección de la sede principal</label>
+              <input type="url" id="cloudUrl" placeholder="http://100.x.y.z:9000" autocomplete="off">
             </div>
             <div class="field">
               <label for="cloudKey">Clave de la sede</label>
               <input type="password" id="cloudKey" placeholder="tqs_…" autocomplete="off">
-              <span class="help">Te la da Traffiqui al activar la sede. Se guarda solo en este equipo.</span>
+              <span class="help">Te la da la sede principal al crear esta sede. Se guarda solo en este equipo.</span>
             </div>
             <div class="row">
               <button class="btn primary" type="submit" id="cloudConnect">Conectar</button>
@@ -598,7 +595,8 @@
           </form>
         </div>
 
-        <div class="card" id="backupCard">
+        <!-- ---- Copias ---- -->
+        <div class="card" id="backupCard" data-group="copias">
           <h2>Copias de seguridad</h2>
           <p class="help">Cada día se guarda una copia de los datos de esta tienda (las 7 últimas y una por semana del
             último mes). Elige además una carpeta en otro disco o en OneDrive / Google Drive para no perderlas si falla el PC.</p>
@@ -616,6 +614,52 @@
               <button class="btn primary" type="button" id="backupNow">Hacer copia ahora</button>
             </div>
           </form>
+        </div>
+
+        <!-- ---- Avanzado ---- -->
+        <div class="card" data-group="avanzado">
+          <h2>Seguimiento</h2>
+          <div class="field">
+            <span class="label">Punto de seguimiento</span>
+            <div class="row">
+              <label class="radio"><input type="radio" name="tp" value="center" data-cfg-radio="track_point">Centro del recuadro</label>
+              <label class="radio"><input type="radio" name="tp" value="bottom" data-cfg-radio="track_point">Base (pies)</label>
+            </div>
+            <span class="help">Con cámara en el techo, usa «Base».</span>
+          </div>
+          <div class="field">
+            <label for="minTrack">Tiempo mínimo para contar a una persona <output data-for="min_track_seconds"></output></label>
+            <input type="range" id="minTrack" min="0" max="5" step="0.5" data-cfg-range="min_track_seconds" data-unit=" s">
+          </div>
+          <div class="field">
+            <label for="lost">Espera antes de dar por perdida a una persona <output data-for="lost_track_seconds"></output></label>
+            <input type="range" id="lost" min="0.5" max="10" step="0.5" data-cfg-range="lost_track_seconds" data-unit=" s">
+          </div>
+          <div class="field">
+            <label for="trail">Duración del rastro <output data-for="trail_seconds"></output></label>
+            <input type="range" id="trail" min="1" max="10" step="0.5" data-cfg-range="trail_seconds" data-unit=" s">
+          </div>
+          <div class="field">
+            <label for="half">Vida media del mapa de calor en vivo <output data-for="heatmap_half_life"></output></label>
+            <input type="range" id="half" min="5" max="300" step="5" data-cfg-range="heatmap_half_life" data-unit=" s">
+          </div>
+        </div>
+
+        <div class="card" data-group="avanzado">
+          <h2>Reidentificación</h2>
+          <div class="field">
+            <label for="reentry">Ventana de re-entrada en la misma cámara <output data-for="reid_reentry_s"></output></label>
+            <input type="range" id="reentry" min="0" max="120" step="5" data-cfg-range="reid_reentry_s" data-unit=" s">
+            <span class="help">Si alguien sale y vuelve dentro de este tiempo con ropa parecida, conserva su número. 0 = desactivado.</span>
+          </div>
+          <div class="field">
+            <label for="handoff">Ventana de traspaso entre cámaras <output data-for="reid_handoff_s"></output></label>
+            <input type="range" id="handoff" min="0" max="60" step="1" data-cfg-range="reid_handoff_s" data-unit=" s">
+            <span class="help">Tiempo máximo para pasar del campo de una cámara al de otra. Con cámaras que se superponen, la unión es inmediata.</span>
+          </div>
+          <div class="field">
+            <label class="switch"><input type="checkbox" data-cfg="show_plan_areas">Dibujar las áreas del plano sobre el video (sirve para comprobar la calibración)</label>
+          </div>
         </div>
       </div>
     </section>
@@ -687,6 +731,7 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script type="importmap">{ "imports": { "three": "/static/vendor/three/three.module.min.js" } }</script>
+  <script src="/vendor/ui.js"></script>
   <script src="/static/chart.umd.min.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/plan-editor.js"></script>

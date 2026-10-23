@@ -2,26 +2,31 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Traffiqui · Sede principal</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17202B">
+  <link rel="icon" href="/vendor/icono.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>Traffiqui</title>
   <link rel="stylesheet" href="/vendor/styles.css">
   <link rel="stylesheet" href="/static/cloud.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span>Traffiqui</span> Sede principal <small id="orgName"></small></div>
-    <nav class="tabs" id="nav" hidden>
-      <a class="tab" href="/" aria-selected="true">Resumen</a>
-      <a class="tab" href="/sedes">Sedes y usuarios</a>
+    <a class="brand" href="/"><span>Traffiqui</span> <small id="orgName">Sede principal</small></a>
+    <nav class="tabs" id="nav" aria-label="Secciones" hidden>
+      <a class="tab" href="/" aria-selected="true"><svg class="i" aria-hidden="true"><use href="#i-casa"/></svg>Resumen</a>
+      <a class="tab" href="/sedes"><svg class="i" aria-hidden="true"><use href="#i-ajustes"/></svg>Administrar</a>
     </nav>
     <select id="orgSelect" aria-label="Empresa" hidden></select>
     <div class="status">
-      <span id="userName"></span>
-      <button class="btn ghost" id="logout">Salir</button>
+      <span class="user-chip hide-sm" id="userName"></span>
+      <button class="help-btn" id="helpBtn" type="button" title="Ver la guía de nuevo" aria-label="Ver la guía de nuevo">?</button>
+      <button class="btn ghost" id="logout" title="Salir"><svg class="i sm" aria-hidden="true"><use href="#i-salir"/></svg><span class="hide-sm">Salir</span></button>
     </div>
   </header>
 
   <main>
+    <div class="page-head"><div><h1>Resumen</h1><p>Todas tus tiendas juntas. Toca una sede para verla en vivo.</p></div></div>
     <div class="filters">
       <div class="seg" role="group" aria-label="Rango">
         <button data-range="today" aria-pressed="true">Hoy</button>
@@ -32,7 +37,7 @@
       <span class="custom" id="custom" hidden>
         <input type="date" id="start" aria-label="Desde"> – <input type="date" id="end" aria-label="Hasta">
       </span>
-      <button class="btn" id="refresh">Actualizar</button>
+      <button class="btn" id="refresh"><svg class="i sm" aria-hidden="true"><use href="#i-recargar"/></svg>Actualizar</button>
       <span class="spacer"></span>
       <span class="note" id="updated"></span>
     </div>
@@ -45,18 +50,18 @@
     <section class="hq-kpis" aria-label="Totales de todas las sedes">
       <div class="kpi"><div class="label">Visitas</div><div class="value" id="tVisits">–</div><div class="sub" id="tVisitsSub"></div><div class="sub cmp" id="tVisitsCmp"></div></div>
       <div class="kpi in"><div class="label">Pasaron por caja</div><div class="value" id="tCheckout">–</div><div class="sub" id="tCheckoutSub"></div><div class="sub cmp" id="tCheckoutCmp"></div></div>
-      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="tDwell">–</div><div class="sub cmp" id="tDwellCmp">en la tienda</div></div>
+      <div class="kpi"><div class="label">Tiempo promedio</div><div class="value" id="tDwell">–</div><div class="sub cmp" id="tDwellCmp">en la tienda</div></div>
       <div class="kpi"><div class="label">Hora punta</div><div class="value" id="tPeak">–</div><div class="sub">todas las sedes juntas</div></div>
       <div class="kpi"><div class="label">Sedes en línea</div><div class="value" id="tOnline">–</div><div class="sub" id="tOnlineSub"></div></div>
     </section>
 
     <div class="card wide">
-      <h3>Sedes <small>ordenadas por visitas</small></h3>
+      <h3 id="sedes">Sedes <small>ordenadas por visitas</small></h3>
       <div class="table-scroll">
-        <table>
+        <table class="rtable">
           <thead><tr>
             <th>Sede</th><th>Estado</th><th class="num">Visitas</th><th class="num">vs semana ant.</th><th class="num">vs mes pasado</th><th class="num">Pasaron por caja</th>
-            <th class="num">% que pasó por caja</th><th class="num">Permanencia prom.</th><th class="num">Hora punta</th>
+            <th class="num">% que pasó por caja</th><th class="num">Tiempo prom.</th><th class="num">Hora punta</th>
             <th class="num">Entradas (puertas)</th><th class="num">Máx. a la vez</th>
           </tr></thead>
           <tbody id="sitesTable"><tr><td colspan="11" class="empty">Cargando…</td></tr></tbody>
@@ -80,7 +85,9 @@
   </main>
 
   <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/vendor/ui.js"></script>
   <script src="/vendor/chart.umd.min.js"></script>
+  <script src="/static/hq.js"></script>
   <script src="/static/dashboard.js"></script>
 </body>
 </html>

@@ -60,7 +60,9 @@
     $('#siteState').className = `state ${st[0]}`;
     $('#siteState').textContent = st[1];
     $('#liveOff').hidden = !!L;
-    $('#liveAge').textContent = L ? `actualizado ${ago(L.ts)}` : '';
+    // la tienda envía al ritmo que le pidió la sede principal; si venía de 30 s, el primer envío rápido tarda hasta 30 s
+    const slow = L && L.next_s > d.next_s;
+    $('#liveAge').textContent = L ? `actualizado ${ago(L.ts)} · cada ${slow ? `${L.next_s} s, pasando a ${d.next_s} s` : `${d.next_s} s`}` : '';
     if (!L) {
       tqPlan.draw($('#livePlan'), plan, {});
       return;
