@@ -37,10 +37,15 @@
       <span class="note" id="updated"></span>
     </div>
 
+    <div class="card wide alerts-card" id="alertsCard" hidden>
+      <h3>Alertas activas <small id="alertsCount"></small></h3>
+      <ul class="alert-list" id="alertsList"></ul>
+    </div>
+
     <section class="hq-kpis" aria-label="Totales de todas las sedes">
-      <div class="kpi"><div class="label">Visitas</div><div class="value" id="tVisits">–</div><div class="sub" id="tVisitsSub"></div></div>
-      <div class="kpi in"><div class="label">Pasaron por caja</div><div class="value" id="tCheckout">–</div><div class="sub" id="tCheckoutSub"></div></div>
-      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="tDwell">–</div><div class="sub">en la tienda</div></div>
+      <div class="kpi"><div class="label">Visitas</div><div class="value" id="tVisits">–</div><div class="sub" id="tVisitsSub"></div><div class="sub cmp" id="tVisitsCmp"></div></div>
+      <div class="kpi in"><div class="label">Pasaron por caja</div><div class="value" id="tCheckout">–</div><div class="sub" id="tCheckoutSub"></div><div class="sub cmp" id="tCheckoutCmp"></div></div>
+      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="tDwell">–</div><div class="sub cmp" id="tDwellCmp">en la tienda</div></div>
       <div class="kpi"><div class="label">Hora punta</div><div class="value" id="tPeak">–</div><div class="sub">todas las sedes juntas</div></div>
       <div class="kpi"><div class="label">Sedes en línea</div><div class="value" id="tOnline">–</div><div class="sub" id="tOnlineSub"></div></div>
     </section>
@@ -50,11 +55,11 @@
       <div class="table-scroll">
         <table>
           <thead><tr>
-            <th>Sede</th><th>Estado</th><th class="num">Visitas</th><th class="num">Pasaron por caja</th>
+            <th>Sede</th><th>Estado</th><th class="num">Visitas</th><th class="num">vs semana ant.</th><th class="num">vs mes pasado</th><th class="num">Pasaron por caja</th>
             <th class="num">% que pasó por caja</th><th class="num">Permanencia prom.</th><th class="num">Hora punta</th>
             <th class="num">Entradas (puertas)</th><th class="num">Máx. a la vez</th>
           </tr></thead>
-          <tbody id="sitesTable"><tr><td colspan="9" class="empty">Cargando…</td></tr></tbody>
+          <tbody id="sitesTable"><tr><td colspan="11" class="empty">Cargando…</td></tr></tbody>
         </table>
       </div>
       <p class="note">"Pasaron por caja" = estuvieron el tiempo configurado en la zona de cajas. No es lo mismo que una compra:

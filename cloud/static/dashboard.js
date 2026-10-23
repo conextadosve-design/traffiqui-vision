@@ -65,6 +65,25 @@
     return Object.fromEntries(ids.map((id, i) => [id, i]));
   }
 
+  /** "▲ 12 %" / "▼ 3 %" / "–" */
+  function delta(v, unit = '%') {
+    if (v === null || v === undefined) return '<span class="delta">–</span>';
+    const cls = v > 0 ? 'up' : v < 0 ? 'down' : '';
+    return `<span class="delta ${cls}">${v > 0 ? '▲' : v < 0 ? '▼' : '='} ${Math.abs(v).toLocaleString('es')} ${unit}</span>`;
+  }
+  const cmpLine = (c, key, unit) => c ? `${delta(c.week?.[key], unit)} vs semana ant. · ${delta(c.month?.[key], unit)} vs mes pasado` : '';
+
+  async function loadAlerts() {
+    try {
+      const d = await api('/api/alerts');
+      const items = d.alerts;
+      $('#alertsCard').hidden = !items.length;
+      $('#alertsCount').textContent = items.length ? `(${items.length})` : '';
+      $('#alertsList').innerHTML = items.map(a => `<li><b><a href="/sede/${a.site_id}">${esc(a.site)}</a> · ${esc(a.message)}</b>
+        <span class="note">desde ${ago(a.started_at)}${a.ack_by ? ` · vista por ${esc(a.ack_by)}` : ` · <button class="btn small" data-ack="${a.id}">Marcar como vista</button>`}</span></li>`).join('');
+    } catch (e) { /* el resumen sigue funcionando */ }
+  }
+
   function render(d) {
     const t = d.totals;
     $('#orgName').textContent = d.org.name;
@@ -72,6 +91,9 @@
     $('#tVisitsSub').textContent = `${num(t.entries)} entradas por puertas`;
     $('#tCheckout').textContent = num(t.checkout);
     $('#tCheckoutSub').textContent = `${pct(t.checkout_rate)} de las visitas`;
+    $('#tVisitsCmp').innerHTML = cmpLine(d.compare, 'visits');
+    $('#tCheckoutCmp').innerHTML = cmpLine(d.compare, 'checkout');
+    $('#tDwellCmp').innerHTML = cmpLine(d.compare, 'avg_dwell');
     $('#tDwell').textContent = secs(t.avg_dwell);
     $('#tPeak').textContent = slot(t.peak_hour);
     $('#tOnline').textContent = `${t.sites_online} de ${t.sites_active}`;
@@ -85,12 +107,13 @@
       const since = s.status === 'active' && !s.online ? ` <small>· ${ago(s.last_sync_at)}</small>` : '';
       const sw = s.id in cmap ? `<span class="swatch" style="background:var(--series-${cmap[s.id] + 1})"></span>` : '';
       return `<tr>
-        <td class="site-name">${sw}${esc(s.name)}</td>
+        <td class="site-name">${sw}<a href="/sede/${s.id}">${esc(s.name)}</a></td>
         <td><span class="state ${state[0]}">${state[1]}${since}</span></td>
-        <td class="num"><b>${num(s.visits)}</b></td><td class="num">${num(s.checkout)}</td>
+        <td class="num"><b>${num(s.visits)}</b></td><td class="num">${delta(s.compare?.week?.visits)}</td>
+        <td class="num">${delta(s.compare?.month?.visits)}</td><td class="num">${num(s.checkout)}</td>
         <td class="num">${s.visits ? pct(s.checkout_rate) : '–'}</td><td class="num">${secs(s.avg_dwell)}</td>
         <td class="num">${slot(s.peak_hour)}</td><td class="num">${num(s.entries)}</td><td class="num">${num(s.max_occupancy)}</td></tr>`;
-    }).join('') : '<tr><td colspan="9" class="empty">Todavía no hay sedes. Créalas en <a href="/sedes">Sedes y usuarios</a>.</td></tr>';
+    }).join('') : '<tr><td colspan="11" class="empty">Todavía no hay sedes. Créalas en <a href="/sedes">Sedes y usuarios</a>.</td></tr>';
     drawCharts(d, cmap);
   }
 
@@ -151,7 +174,7 @@
       sel.innerHTML = me.orgs.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
       orgId = me.orgs[0]?.id ?? null;
       sel.onchange = () => { orgId = Number(sel.value); load(); };
-      if (!orgId) $('#sitesTable').innerHTML = '<tr><td colspan="9" class="empty">Todavía no hay empresas.</td></tr>';
+      if (!orgId) $('#sitesTable').innerHTML = '<tr><td colspan="11" class="empty">Todavía no hay empresas.</td></tr>';
     }
     document.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => {
       range = b.dataset.range;
@@ -168,6 +191,12 @@
     $('#refresh').onclick = load;
     $('#logout').onclick = async () => { await fetch('/api/auth/logout', { method: 'POST' }); location.href = '/login'; };
     setInterval(() => { if (range !== 'custom') load(); }, 60000);
+    $('#alertsList').addEventListener('click', async ev => {
+      const b = ev.target.closest('[data-ack]'); if (!b) return;
+      try { await api(`/api/alerts/${b.dataset.ack}/ack`, { method: 'POST' }); loadAlerts(); } catch (e) { toast(e.message, true); }
+    });
+    loadAlerts();
+    setInterval(loadAlerts, 20000);
     matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => last && render(last));
     load();
   }

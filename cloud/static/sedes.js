@@ -172,6 +172,12 @@
       catch (e) { toast(e.message, true); }
     });
     smtpLoad().catch(() => {});
+    api('/api/manage/alerts-config').then(c => { $('#offlineMin').value = c.offline_min; }).catch(() => {});
+    $('#offlineForm').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      try { await api('/api/manage/alerts-config', 'PUT', { offline_min: Number($('#offlineMin').value) }); toast('Guardado.'); }
+      catch (e) { toast(e.message, true); }
+    });
     load();
     setInterval(load, 30000);
   }
