@@ -12,4 +12,6 @@ python -m pip install --quiet torch==2.14.1 torchvision==0.29.1 --index-url http
 # el resto de requirements.txt; OpenCV "headless" porque en la nube no hay pantalla (evita depender de libGL)
 grep -v -E '^(torch|torchvision|opencv-python)==' requirements.txt > /tmp/requirements-cloud.txt
 python -m pip install --quiet -r /tmp/requirements-cloud.txt opencv-python-headless==5.0.0.93
+# servidor central de la multisede (cloud/)
+python -m pip install --quiet -r cloud/requirements.txt
 python -m pytest -q tests

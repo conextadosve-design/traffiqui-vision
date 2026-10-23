@@ -1,0 +1,9 @@
+# Servidor central de la multisede (modo sede principal). El instalador ya lo incluye.
+fastapi==0.146.0
+starlette==1.9.0
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.6
+cryptography==50.0.2   # licencias de sedes firmadas
+tzdata==2026.5   # zonas horarias (America/Caracas): Windows no trae la base IANA
+# En producción, con PostgreSQL:
+# psycopg[binary]==3.2.3

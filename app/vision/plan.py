@@ -29,7 +29,7 @@ ELEMENT_TYPES = {
     "area": ("polygon", 0.0),       # área de análisis (pasillo, cabecera, caja…)
     "camera": ("point", 2.8),       # cámara (posición y orientación)
 }
-# caja = zona donde se para el CLIENTE para pagar (cuenta para "comprador");
+# caja = zona donde se para el CLIENTE para pagar (cuenta para "pasó por caja");
 # personal = zona solo de empleados (detrás del mostrador o de la caja): quien está ahí es personal
 AREA_KINDS = ("pasillo", "cabecera", "caja", "entrada", "mostrador", "personal", "otro")
 CUSTOMER_SIDES = ("front", "back", "left", "right")

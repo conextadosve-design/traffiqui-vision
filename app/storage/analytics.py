@@ -217,16 +217,16 @@ def to_csv(data: dict, store: dict | None = None, buyers: dict | None = None, ho
     if buyers:
         g = buyers["groups"]
         w.writerow([])
-        w.writerow([f"Compradores (>= {buyers['buyer_seconds']:g} s en cajas)", "Compradores", "No compradores", "Total"])
+        w.writerow([f"Pasaron por caja (>= {buyers['buyer_seconds']:g} s en cajas)", "Pasaron por caja", "No pasaron", "Total"])
         rows = [("Personas", "count"), ("% del total", "share"), ("Permanencia promedio (s)", "avg_dwell"),
                 ("Permanencia mediana (s)", "median_dwell"), ("Áreas visitadas (promedio)", "avg_areas"),
                 ("Se detuvieron en alguna área", "stop_rate"), ("Segundos en cajas (promedio)", "avg_checkout"),
                 ("Todavía en la tienda", "in_progress")]
         for label, k in rows:
             w.writerow([label] + [num(g[x][k]) for x in ("buyers", "non_buyers", "total")])
-        w.writerow(["Tasa de conversión", num(buyers["conversion"])])
+        w.writerow(["% que pasó por caja", num(buyers["conversion"])])
         w.writerow([])
-        w.writerow(["Área", "Compradores que pasaron", "% de compradores", "No compradores que pasaron", "% de no compradores"])
+        w.writerow(["Área", "Pasaron por caja: visitaron el área", "% de los que pasaron por caja", "No pasaron: visitaron el área", "% de los que no pasaron"])
         for a in buyers["areas"]:
             w.writerow([a["name"], a["buyers"], num(a["buyers_pct"]), a["non_buyers"], num(a["non_buyers_pct"])])
         if buyers["doors"]:
@@ -235,7 +235,7 @@ def to_csv(data: dict, store: dict | None = None, buyers: dict | None = None, ho
             for d in buyers["doors"]:
                 w.writerow([d["name"], d["in"], d["out"]])
         w.writerow([])
-        w.writerow(["Hora", "Compradores", "No compradores", "Entradas (puertas)", "Salidas (puertas)"])
+        w.writerow(["Hora", "Pasaron por caja", "No pasaron", "Entradas (puertas)", "Salidas (puertas)"])
         for r in buyers["by_hour"]:
             w.writerow([fmt(r["t"]), r["buyers"], r["non_buyers"], r["entries"], r["exits"]])
     if hourly:

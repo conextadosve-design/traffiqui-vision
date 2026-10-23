@@ -147,7 +147,7 @@ main { padding: 20px 24px 40px; max-width: 1500px; margin: 0 auto; }
 .seg button { border: 0; background: var(--surface); padding: 6px 12px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--muted); }
 .seg button + button { border-left: 1px solid var(--border); }
 .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
-select, input[type="datetime-local"], input[type="text"], input[type="number"] {
+select, input[type="datetime-local"], input[type="text"], input[type="number"], input[type="url"], input[type="password"] {
   padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface);
 }
 input[type="range"] { width: 100%; accent-color: var(--brass); }
@@ -459,3 +459,8 @@ table.peaks tbody tr:hover, table.peaks tbody tr.sel { background: var(--surface
 .spark { display: flex; align-items: flex-end; gap: 1px; height: 26px; width: 168px; }
 .spark i { flex: 1; background: var(--chart-2); opacity: .55; border-radius: 1px 1px 0 0; min-height: 1px; }
 .spark i.pk { background: var(--chart-1); opacity: 1; }
+
+/* multisede: tarjeta "Sede principal" en Configuración */
+#cloudCard .pill { background: var(--surface-2); border: 1px solid var(--border); font-size: 13px; font-weight: 600; }
+#cloudCard .pill.warn::before { background: var(--brass); }
+#cloudCard input[type="url"], #cloudCard input[type="password"] { width: 100%; }

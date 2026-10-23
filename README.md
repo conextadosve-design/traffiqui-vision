@@ -1,5 +1,9 @@
 # Traffiqui Vision · MVP de conteo y mapa de calor con webcam
 
+> **Instalar en una tienda o en la sede principal con `Traffiqui-Setup.exe`:** ver
+> [docs/INSTALACION.md](docs/INSTALACION.md). Este README explica la app de la tienda y cómo
+> trabajar con el código.
+
 Prototipo local de la parte de visión por computadora de **Traffiqui**, el SaaS de analítica de
 tráfico físico para retail. Con una sola cámara (tu webcam) detecta personas, sigue a cada una con un
 color propio, dibuja su recorrido con un rastro que se desvanece, cuenta entradas y salidas, mide
@@ -133,7 +137,7 @@ La calibración convierte "pies de la persona en la imagen" en "posición en met
   **recorridos frecuentes** (A → B → C), y la matriz **personas por área y hora**.
 - Botones Vista 3D y Desde arriba. Todo se exporta al CSV.
 
-### Entrada, salida y compradores
+### Entrada, salida y "pasaron por caja"
 - **Entrada** y **Salida** (barra del Plano). Si la gente entra y sale por la misma puerta, basta con una
   **Entrada** con función "Entrada y salida": cuenta según el sentido de cruce. Si hay una **salida
   aparte** (por ejemplo, después de las cajas), dibújala con **Salida**: queda como "Solo salida" y las
@@ -141,21 +145,21 @@ La calibración convierte "pies de la persona en la imagen" en "posición en met
   detecta solo, y si queda al revés, marca "Invertir lado interior". Los cruces se cuentan en el plano
   (hace falta que una cámara calibrada vea la puerta) y solo cuando la persona ya está confirmada.
 - **Zona de cajas**: un área del plano con tipo "Zona de cajas". Quien **acumule ahí 20 s** (configurable
-  en Configuración; se suman todas sus visitas a cajas) pasa a ser **comprador exitoso**. En En vivo y en
-  Tienda 3D se marca como "Comprador".
-- Pestaña **Compradores**: tasa de conversión; **compradores**, **no compradores** (solo transitaron) y
+  en Configuración; se suman todas sus visitas a cajas) cuenta como **pasó por caja**. En En vivo y en
+  Tienda 3D se marca como "Pasó por caja".
+- Pestaña **Pasaron por caja**: % que pasó por caja; **pasaron por caja**, **no pasaron** (solo transitaron) y
   **total**, con personas, % del total, permanencia promedio y mediana, áreas distintas visitadas, % que
-  se detuvo en algún área, tiempo en cajas y cuántos siguen en la tienda. Además: compradores y no
-  compradores por hora, permanencia por grupo, **qué pasillos recorre cada grupo** (y la diferencia en
+  se detuvo en algún área, tiempo en cajas y cuántos siguen en la tienda. Además: pasaron y no pasaron
+  por caja, por hora, permanencia por grupo, **qué pasillos recorre cada grupo** (y la diferencia en
   puntos), entradas y salidas por puerta, y quién está en la tienda ahora y en qué estado.
-- Es una **aproximación** de compra: alguien que espera a un acompañante en la fila de caja cuenta como
-  comprador, y quien paga muy rápido (menos de 20 s) no. Ajusta el umbral observando la tienda real, y
+- **No mide compras**: el sistema no ve los tickets, solo quién estuvo en la zona de cajas. Alguien que
+  espera a un acompañante en la fila cuenta, y quien paga muy rápido (menos de 20 s) no. Ajusta el umbral observando la tienda real, y
   si es posible compáralo con los tickets del POS de esa hora.
 
 ### Cajas por separado y personal
 - Cada **Caja** del plano crea sola dos zonas que la siguen al moverla, rotarla o cambiarle el tamaño:
-  - **Zona del cliente** (azul, "cliente paga aquí"): quien acumule ahí el tiempo configurado es
-    **comprador**, y la compra se **atribuye a esa caja**. Si pasó por varias cajas, cuenta la caja donde
+  - **Zona del cliente** (azul, "cliente paga aquí"): quien acumule ahí el tiempo configurado
+    **pasó por caja**, y se **asigna a esa caja**. Si pasó por varias cajas, cuenta la caja donde
     más tiempo estuvo. En el panel eliges el lado (frente, atrás, izquierda o derecha), la profundidad y
     el margen.
   - **Zona del cajero** (gris rayado, opcional): quien se pare ahí es **personal**.
@@ -163,12 +167,12 @@ La calibración convierte "pies de la persona en la imagen" en "posición en met
   depósito. Quien pase ahí 15 s (configurable) queda marcado como personal.
 - **Más de 4 horas** en el sistema (configurable, 0 = desactivado) también marca a la persona como
   personal: trabajadores y personal extra.
-- El personal **se excluye de todas las estadísticas de clientes**: personas únicas, compradores,
-  conversión, permanencia, áreas, recorridos, puertas y ocupación. Si ya había contado como comprador,
-  se le quita. En Compradores se muestra cuántos se excluyeron y por qué, y en vivo aparece con el badge
+- El personal **se excluye de todas las estadísticas de clientes**: personas únicas, pasaron por caja,
+  % que pasó por caja, permanencia, áreas, recorridos, puertas y ocupación. Si ya había contado como
+  "pasó por caja", se le quita. En Pasaron por caja se muestra cuántos se excluyeron y por qué, y en vivo aparece con el badge
   "Personal".
-- La pestaña Compradores muestra **cada caja**: personas en fila ahora, cuántas pasaron, compras
-  atribuidas, % de las compras y tiempo promedio en caja.
+- La pestaña Pasaron por caja muestra **cada caja**: personas en fila ahora, cuántas entraron a la zona,
+  cuántas se asignan a esa caja, su % del total y el tiempo promedio en caja.
 - El tiempo en cajas cuenta "dentro de al menos una zona de caja": si dos zonas se superponen, no se
   duplica.
 - **Límite de la regla de 4 h:** depende de que la persona conserve su ID. Si un empleado se va al
@@ -198,14 +202,14 @@ La calibración convierte "pies de la persona en la imagen" en "posición en met
 - Lista de **elementos** agrupada por capa: un clic selecciona.
 
 ### Rangos y tráfico por hora de cada día
-- Analítica, Compradores y Tienda 3D tienen los rangos **Hoy**, **Última hora**, **Semana** (últimos 7
+- Analítica, Pasaron por caja y Tienda 3D tienen los rangos **Hoy**, **Última hora**, **Semana** (últimos 7
   días, incluido hoy), **Mes** (últimos 30 días) y **Personalizado**. En semana y mes el intervalo de los
-  gráficos sube solo (1 hora o 1 día) y las etiquetas muestran el día. Compradores se ve por día y la
+  gráficos sube solo (1 hora o 1 día) y las etiquetas muestran el día. Pasaron por caja se ve por día y la
   matriz de Tienda 3D se agrupa por hora del día.
 - En **Analítica → Tráfico por hora de cada día**:
   - Una tabla **día × hora** (00h–23h) para **toda la tienda** o para **un área**: personas distintas
     que entraron en cada hora. Más oscuro = más tráfico.
-  - **Personas** o solo **Compradores**.
+  - **Personas** o solo **Pasaron por caja**.
   - **Cada día** o **Promedio por día de la semana**, por ejemplo "los sábados a las 11 h vienen 14
     personas en promedio".
   - **Hora pico de cada área**: la hora de más tráfico, cuántas personas por día en esa hora, las otras
@@ -246,6 +250,14 @@ prueba. El video en vivo y la calibración se prueban en la PC de la tienda.
   sin pantalla, y corre los tests.
 - Para traer los cambios a la PC: `git pull` dentro de la carpeta y luego `run.bat`, que reinstala
   solo si cambió `requirements.txt`.
+
+### Multisede: conectar la tienda con la sede principal
+Configuración → **Sede principal**: pega la dirección del servidor central y la **clave de la sede** (empieza por
+`tqs_`) que te da el administrador al activar la sede. Desde ese momento la app envía cada 30 s sus números
+(personas, puertas, áreas, ocupación y mapa de calor del plano) al servidor, donde gerencia y marketing ven
+todas las sedes juntas. Nunca se envía video ni imágenes. Sin internet la tienda sigue funcionando igual y
+envía lo pendiente al volver. Instalación de la sede principal y de las tiendas: [docs/INSTALACION.md](docs/INSTALACION.md);
+diseño: [docs/MULTISEDE.md](docs/MULTISEDE.md).
 
 ## 4. Qué significa cada métrica
 
@@ -401,9 +413,10 @@ Archivo: `data/traffiqui.db` (modo WAL). Marcas de tiempo en epoch (segundos).
 | `area_transitions` | Cada paso de un área a otra (`from` → `to`) por persona. |
 | `plan_heatmap_snapshots` | Cada 5 min: grilla del **plano** (celdas de 0.25 m) con las posiciones de ese intervalo. |
 | `store_door_events` | Cada cruce de una puerta del plano: `global_id`, `door_id`, `door_name`, `direction` (`in` = entró, `out` = salió), `ts`. |
+| `cloud_link` | Conexión con el servidor central (una fila): dirección, clave de la sede (nunca sale por la API local), `db_uid` y hasta dónde se envió cada tabla. |
 
-`global_tracks` también guarda `is_buyer` (comprador exitoso), `checkout_seconds` (tiempo en cajas),
-`checkout_area_id` / `checkout_area` (caja a la que se atribuye la compra), `stopped_any` (se detuvo en
+`global_tracks` también guarda `is_buyer` (pasó por caja), `checkout_seconds` (tiempo en cajas),
+`checkout_area_id` / `checkout_area` (caja a la que se asigna), `changed_at` (última escritura, para la sincronización), `stopped_any` (se detuvo en
 alguna área) e `is_staff` / `staff_reason` (personal, excluido de todas las consultas de clientes). Estas columnas se agregan solas a una base existente al iniciar.
 
 El plano (`floorplan`) y las cámaras (`cameras`, con su calibración) se guardan en `config`.

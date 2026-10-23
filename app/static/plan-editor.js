@@ -3,7 +3,7 @@
  * Pensado para quien no dibuja planos: pasos guiados, herramientas con atajos,
  * selección múltiple, alinear / distribuir, medidas visibles, imán a esquinas,
  * capas que se ocultan o bloquean, imagen de fondo para calcar y plantillas.
- * Cada caja (checkout) genera sola su "zona del cliente" (cuenta para comprador)
+ * Cada caja (checkout) genera sola su "zona del cliente" (cuenta para "pasó por caja")
  * y su "zona del cajero" (marca al personal), que la siguen al moverla o rotarla.
  */
 'use strict';
@@ -862,7 +862,7 @@
           <div class="pp-row">${field('Profundidad (m)', num('zone_depth', e.zone_depth ?? 1.2))}${field('Margen a los lados (m)', num('zone_extra', e.zone_extra ?? 0.2))}</div>
           <label class="switch"><input type="checkbox" data-propbool="cashier_zone" ${e.cashier_zone !== false ? 'checked' : ''}>Zona del cajero (personal) del otro lado</label>
           ${e.cashier_zone !== false ? field('Profundidad zona del cajero (m)', num('cashier_depth', e.cashier_depth ?? 0.9)) : ''}
-          <p class="note">Quien acumule el tiempo configurado en la zona <b>azul</b> cuenta como <b>comprador</b> de esta caja.
+          <p class="note">Quien acumule el tiempo configurado en la zona <b>azul</b> cuenta como <b>pasó por esta caja</b>.
             Quien se pare en la zona <b>gris rayada</b> (detrás) se marca como <b>personal</b> y no cuenta en las estadísticas.</p>`;
       }
     } else if (T.shape === 'segment') {
@@ -887,7 +887,7 @@
           'La editaste a mano: ya no sigue a la caja.'}</p>`;
         if (e.auto === false) html += '<button class="btn" id="ppAuto">Volver a la zona automática</button>';
       } else if (e.kind === 'caja') {
-        html += '<p class="note"><b>Zona de cajas:</b> quien acumule aquí el tiempo configurado cuenta como comprador. Es mejor usar la herramienta <b>Caja</b>, que la crea sola en el lado correcto.</p>';
+        html += '<p class="note"><b>Zona de cajas:</b> quien acumule aquí el tiempo configurado cuenta como "pasó por caja". Es mejor usar la herramienta <b>Caja</b>, que la crea sola en el lado correcto.</p>';
       } else if (e.kind === 'personal') {
         html += '<p class="note"><b>Zona de personal:</b> quien pase aquí el tiempo configurado (15 s por defecto) se marca como personal y no cuenta en las estadísticas.</p>';
       }
@@ -968,7 +968,7 @@
     { title: 'Muebles', tool: 'gondola', done: p => p.elements.some(e => ['gondola', 'furniture', 'fridge', 'counter'].includes(e.type)),
       help: 'Coloca góndolas, neveras y mostradores. "Generar góndolas…" crea una fila completa con sus pasillos. Selecciona varias para alinearlas o repartirlas.' },
     { title: 'Cajas', tool: 'checkout', done: p => p.elements.some(e => e.type === 'checkout'),
-      help: 'Coloca cada caja de cobro. Se crea sola la zona donde se para el CLIENTE (cuenta para comprador) y la del CAJERO (personal). Ajusta el lado del cliente en el panel.' },
+      help: 'Coloca cada caja de cobro. Se crea sola la zona donde se para el CLIENTE (cuenta para "pasó por caja") y la del CAJERO (personal). Ajusta el lado del cliente en el panel.' },
     { title: 'Pasillos y áreas', tool: 'area-rect', done: p => p.elements.some(e => e.type === 'area' && !e.checkout_id),
       help: 'Marca lo que quieres medir: pasillos, cabeceras, la zona de entrada. Tip: selecciona 2 góndolas y pulsa "Crear pasillo entre las 2".' },
     { title: 'Cámaras', tool: 'camera', done: p => p.elements.some(e => e.type === 'camera'),

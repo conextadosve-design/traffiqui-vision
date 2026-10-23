@@ -131,7 +131,7 @@ function renderLive(m) {
   const st = m.store || {};
   $('#kBuyers').textContent = st.has_checkout ? m.buyers_today : '–';
   $('#kConv').textContent = st.has_checkout
-    ? `Conversión: ${m.unique_today ? Math.round(100 * m.buyers_today / m.unique_today) : 0} %`
+    ? `% de las visitas: ${m.unique_today ? Math.round(100 * m.buyers_today / m.unique_today) : 0} %`
     : 'Marca la zona de cajas en el Plano';
   $('#kDoors').textContent = (st.doors || []).length ? `${st.entries} / ${st.exits}` : '–';
   $('#kDoorsSub').textContent = (st.doors || []).length ? 'entradas / salidas (sesión)' : 'Calibra la cámara de la entrada';
@@ -140,7 +140,7 @@ function renderLive(m) {
   $('#people').innerHTML = m.people.length
     ? m.people.map(p => {
       const g = (m.store?.people || []).find(x => x.gid === p.id) || {};
-      const badge = g.staff ? '<span class="badge staff">Personal</span>' : g.buyer ? '<span class="badge ok">Comprador</span>' : '';
+      const badge = g.staff ? '<span class="badge staff">Personal</span>' : g.buyer ? '<span class="badge ok">Pasó por caja</span>' : '';
       return `<span class="chip"><span class="dot" style="background:${esc(p.color)}"></span>ID ${p.id} · ${fmtSecs(p.seconds)}${
         (m.cameras || []).length > 1 ? `<small>${esc(p.camera_id)}</small>` : ''}${badge}</span>`;
     }).join('')

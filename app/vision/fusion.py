@@ -296,7 +296,7 @@ class StoreFusion:
         self._occ_sum = self._occ_n = self._occ_max = 0
         self.links_by_reason: dict[str, int] = {}
         self.stop_seconds = 10.0
-        self.buyer_seconds = 20.0   # en zonas de cajas para contar como "comprador exitoso"
+        self.buyer_seconds = 20.0   # en zonas de cajas para contar como "pasó por caja"
         self.buyers = 0
         # personal: quien supera staff_hours en el sistema o pasa staff_zone_seconds en una zona de personal
         self.staff_hours = 4.0
@@ -380,7 +380,7 @@ class StoreFusion:
             g.caja_last = None  # salió (con 1 s de tolerancia a parpadeos del detector)
 
     def _checkout_area(self, g: GlobalTrack, t: float) -> str | None:
-        """La caja (zona de cliente) donde más tiempo pasó: ahí se le atribuye la compra."""
+        """La caja (zona de cliente) donde más tiempo pasó: es la caja a la que se asigna."""
         per = dict(g.checkout_by_area)
         for aid, s in self._ongoing(g, t, "caja").items():
             per[aid] = per.get(aid, 0.0) + s

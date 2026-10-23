@@ -1,0 +1,94 @@
+# Genera el instalador de Windows (Traffiqui-Setup-x.y.z.exe) en una máquina Windows de GitHub.
+# - A mano: pestaña Actions → "Instalador de Windows" → Run workflow.
+# - Al crear una etiqueta v1.2.3: además lo publica como Release.
+# - Al cambiar algo de packaging/ o de este archivo: para comprobar que el empaquetado sigue funcionando.
+# El instalador queda en la ejecución, sección "Artifacts".
+name: Instalador de Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+    # también al cambiar el empaquetado en cualquier rama (para comprobar que sigue funcionando)
+    branches: ["**"]
+    paths: ["packaging/**", ".github/workflows/instalador-windows.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Versión
+        id: ver
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF#refs/tags/v}"; else v="0.0.${GITHUB_RUN_NUMBER}"; fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+      - name: Dependencias
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r cloud/requirements.txt -r packaging/requirements-build.txt
+
+      - name: Pruebas
+        run: python -m pytest -q tests
+
+      - name: Modelo e icono
+        run: |
+          python -c "from app.vision.model import ensure_model; print(ensure_model())"
+          python packaging/make_icon.py
+
+      - name: Empaquetar (PyInstaller)
+        run: pyinstaller packaging/traffiqui.spec --noconfirm
+
+      - name: Prueba de humo del .exe (sede principal y tienda)
+        shell: pwsh
+        run: |
+          $env:TRAFFIQUI_DATA = "$env:RUNNER_TEMP\tqdata"
+          function Probar($modo, $url) {
+            $p = Start-Process dist\Traffiqui\Traffiqui.exe -ArgumentList "--modo $modo --no-abrir --sin-bandeja" -PassThru
+            $ok = $false
+            for ($i = 0; $i -lt 90; $i++) {
+              Start-Sleep 2
+              try { if ((Invoke-WebRequest $url -UseBasicParsing -TimeoutSec 5).StatusCode -eq 200) { $ok = $true; break } } catch {}
+              if ($p.HasExited) { break }
+            }
+            Stop-Process $p -Force -ErrorAction SilentlyContinue
+            Get-Content "$env:TRAFFIQUI_DATA\logs\traffiqui.log" -Tail 40 -ErrorAction SilentlyContinue
+            if (-not $ok) { throw "El modo $modo no respondió en $url" }
+            Write-Host "OK: $modo"
+          }
+          Probar "sede-principal" "http://127.0.0.1:9000/setup"
+          Probar "tienda" "http://127.0.0.1:8000/api/cloud"
+
+      - name: Instalador (Inno Setup)
+        shell: pwsh
+        run: |
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) {
+            if (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") { $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6" }
+            else { choco install innosetup -y --no-progress; $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6" }
+          }
+          iscc packaging\installer.iss /DAppVersion=${{ steps.ver.outputs.version }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Traffiqui-Setup-${{ steps.ver.outputs.version }}
+          path: dist/Traffiqui-Setup-*.exe
+          retention-days: 30
+
+      - name: Publicar Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release create "$GITHUB_REF_NAME" dist/Traffiqui-Setup-*.exe --title "Traffiqui $GITHUB_REF_NAME" --generate-notes
