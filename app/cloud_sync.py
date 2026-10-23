@@ -24,8 +24,10 @@ import uuid
 
 log = logging.getLogger("traffiqui.cloud")
 
-AGENT_VERSION = "1.0"
+AGENT_VERSION = "1.1"
 INTERVAL_S = 30.0
+LIVE_INTERVAL_S = 3.0      # estado en vivo (personas ahora, plano, cámaras, alertas)
+LIVE_BACKOFF_S = 30.0      # si la sede principal no responde, se reintenta con calma
 BATCH_ROWS = 2000
 MAX_ROUNDS = 20      # lotes seguidos por ciclo al ponerse al día
 SETTLE_S = 5.0
@@ -60,9 +62,11 @@ def _post(url: str, key: str, path: str, payload: dict) -> dict:
 
 
 class CloudSync(threading.Thread):
-    def __init__(self, db, floorplan=lambda: None, interval: float = INTERVAL_S, post=_post):
+    def __init__(self, db, floorplan=lambda: None, interval: float = INTERVAL_S, post=_post, live=None):
         super().__init__(name="sincronización", daemon=True)
         self.db, self.floorplan, self.interval, self._post = db, floorplan, interval, post
+        self.live = live   # función que devuelve el estado en vivo de la tienda (ver app/main.py)
+        self._live_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._wake = threading.Event()
         self._lock = threading.Lock()   # un solo envío a la vez
@@ -150,6 +154,8 @@ class CloudSync(threading.Thread):
                     payload = {"db_uid": lk["db_uid"], "agent_version": AGENT_VERSION,
                                "tables": {t: rows for t, rows in tables.items() if rows}}
                     plan = self.floorplan()
+                    if plan:   # la imagen de fondo del croquis puede pesar MB y no hace falta en la sede principal
+                        plan = {k: v for k, v in plan.items() if k != "background"}
                     plan_hash = hashlib.sha256(json.dumps(plan, sort_keys=True).encode()).hexdigest() if plan else None
                     if plan_hash and plan_hash != cur.get("floorplan"):
                         payload["floorplan"] = plan
@@ -175,7 +181,31 @@ class CloudSync(threading.Thread):
             self.state.update(state="ok", message="", last_ok=time.time(), sent=self.state["sent"] + sent)
             return sent
 
+    def push_live(self) -> bool:
+        """Envía el estado en vivo. Devuelve si llegó."""
+        lk = self.link()
+        if not (self.live and lk["url"] and lk["site_key"]) or self.state.get("state") == "blocked":
+            return False
+        try:
+            self._post(lk["url"], lk["site_key"], "/api/agent/live", {"db_uid": lk["db_uid"], **self.live()})
+            return True
+        except CloudError as e:
+            if e.blocked:
+                self.state.update(state="blocked", message=str(e))
+            return False
+        except Exception:  # noqa: BLE001
+            log.exception("Error preparando el estado en vivo")
+            return False
+
+    def _live_loop(self) -> None:
+        while not self._stop_event.is_set():
+            ok = self.push_live()
+            self._stop_event.wait(LIVE_INTERVAL_S if ok else LIVE_BACKOFF_S)
+
     def run(self) -> None:
+        if self.live and self._live_thread is None:
+            self._live_thread = threading.Thread(target=self._live_loop, name="en-vivo", daemon=True)
+            self._live_thread.start()
         while not self._stop_event.is_set():
             try:
                 self.sync_once()

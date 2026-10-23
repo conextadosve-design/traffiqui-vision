@@ -428,11 +428,12 @@
             </select>
           </div>
           <div class="field">
-            <label for="imgszSelect">Tamaño de inferencia (imgsz)</label>
-            <select id="imgszSelect" data-cfg-select="imgsz" data-num>
-              <option>320</option><option>384</option><option>416</option><option>480</option><option>512</option><option>640</option>
+            <label for="detSelect">Detector de personas</label>
+            <select id="detSelect" data-cfg-select="detector">
+              <option value="preciso">Preciso (recomendado)</option>
+              <option value="rapido">Rápido (para PCs con muchas cámaras)</option>
             </select>
-            <span class="help">Más chico = más FPS, menos precisión con personas lejanas.</span>
+            <span class="help">El rápido usa la mitad de CPU pero se pierde más gente lejana o tapada.</span>
           </div>
           <div class="field">
             <label for="conf">Confianza mínima <output data-for="confidence"></output></label>
@@ -488,6 +489,16 @@
             <label for="staffZone">Tiempo en una zona de personal para marcar a alguien como personal <output data-for="staff_zone_seconds"></output></label>
             <input type="range" id="staffZone" min="5" max="120" step="5" data-cfg-range="staff_zone_seconds" data-unit=" s">
             <span class="help">Zonas de personal: detrás de cada caja (se crean solas) o las que marques en el Plano (detrás del mostrador, depósito).</span>
+          </div>
+          <div class="field">
+            <label for="alertCap">Aforo máximo (alerta) <output data-for="alert_capacity"></output></label>
+            <input type="range" id="alertCap" min="0" max="300" step="5" data-cfg-range="alert_capacity" data-unit=" personas">
+            <span class="help">Avisa si hay más personas a la vez durante 30 s. 0 = sin alerta.</span>
+          </div>
+          <div class="field">
+            <label for="alertQueue">Fila larga en caja (alerta, opcional) <output data-for="alert_queue_people"></output></label>
+            <input type="range" id="alertQueue" min="0" max="15" step="1" data-cfg-range="alert_queue_people" data-unit=" personas">
+            <span class="help">Avisa si una caja tiene esta cantidad de personas o más durante 1 minuto. 0 = sin alerta.</span>
           </div>
           <div class="field">
             <span class="label">Privacidad</span>
@@ -586,6 +597,26 @@
             </div>
           </form>
         </div>
+
+        <div class="card" id="backupCard">
+          <h2>Copias de seguridad</h2>
+          <p class="help">Cada día se guarda una copia de los datos de esta tienda (las 7 últimas y una por semana del
+            último mes). Elige además una carpeta en otro disco o en OneDrive / Google Drive para no perderlas si falla el PC.</p>
+          <div class="field">
+            <span class="label">Última copia</span>
+            <span class="help" id="backupInfo">–</span>
+          </div>
+          <form id="backupForm">
+            <div class="field">
+              <label for="backupExtra">Carpeta extra (opcional)</label>
+              <input type="text" id="backupExtra" placeholder="D:\CopiasTraffiqui" autocomplete="off">
+            </div>
+            <div class="row">
+              <button class="btn" type="submit">Guardar carpeta</button>
+              <button class="btn primary" type="button" id="backupNow">Hacer copia ahora</button>
+            </div>
+          </form>
+        </div>
       </div>
     </section>
   </main>
@@ -663,6 +694,7 @@
   <script src="/static/buyers.js"></script>
   <script src="/static/hourly.js"></script>
   <script src="/static/cloud.js"></script>
+  <script src="/static/backup.js"></script>
   <script type="module" src="/static/store3d.js"></script>
 </body>
 </html>

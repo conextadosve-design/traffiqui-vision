@@ -16,6 +16,8 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconn
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.alerts import AlertTracker
+from app.backup import BackupManager
 from app.cloud_sync import CloudError, CloudSync
 from app.config import DATA_DIR, DEFAULTS, Settings
 from app.storage import analytics
@@ -65,6 +67,8 @@ class Runtime:
         self.db: Database | None = None
         self.recorder: Recorder | None = None
         self.cloud: CloudSync | None = None
+        self.backup: BackupManager | None = None
+        self.alerts = AlertTracker()
         self.fusion: StoreFusion | None = None
         self.cams: dict[str, CameraRuntime] = {}
         self.primary_id = "cam1"
@@ -112,8 +116,10 @@ class Runtime:
         primary.request_reference()
         self.recorder = Recorder(self.db, primary.metrics, fusion=self.fusion)
         self.recorder.start()
-        self.cloud = CloudSync(self.db, floorplan=lambda: self.settings.get("floorplan"))
+        self.cloud = CloudSync(self.db, floorplan=lambda: self.settings.get("floorplan"), live=live_payload)
         self.cloud.start()
+        self.backup = BackupManager(Path(self.db.path).parent)
+        self.backup.start()
 
     def _start_cam(self, cam: dict) -> None:
         primary = cam["id"] == self.primary_id
@@ -157,6 +163,8 @@ class Runtime:
             self.fusion.finish_all(time.time())
         if self.recorder:
             self.recorder.stop()
+        if self.backup:
+            self.backup.stop()
         if self.cloud:
             self.cloud.stop()  # lo que falte se envía al volver a abrir la app
         for cr in self.cams.values():
@@ -245,6 +253,8 @@ def camera_status() -> list[dict]:
             "error": cr.capture.error if cr else None,
             "fps": round(cr.pipeline.fps, 1) if cr else 0.0,
             "calibrated": bool(cal.get("H")), "calibration_error_m": cal.get("error_m"),
+            "health": cr.pipeline.health.snapshot() if cr else {"state": "apagada", "ok": False,
+                                                                "message": "Cámara deshabilitada", "since": None},
         })
     return out
 
@@ -254,6 +264,7 @@ def live_metrics() -> dict:
     cfg = runtime.settings.snapshot()
     now = time.time()
     store = runtime.fusion.snapshot(now)
+    cams = camera_status()
     people, seen = [], set()  # una persona vista por dos cámaras aparece una sola vez
     for cr in runtime.cams.values():
         for person in cr.pipeline.active_people():
@@ -279,7 +290,30 @@ def live_metrics() -> dict:
         "peak_at": store["peak_at"],
         "dwell": store["dwell"],
         "store": store,
-        "cameras": camera_status(),
+        "cameras": cams,
+        "alerts": runtime.alerts.update(cfg, store["people_now"], store.get("areas", []), cams, now),
+    }
+
+
+def live_payload() -> dict:
+    """Estado en vivo para la sede principal: solo números y posiciones en el plano, nunca imágenes."""
+    now = time.time()
+    cfg = runtime.settings.snapshot()
+    store = runtime.fusion.snapshot(now)
+    cams = camera_status()
+    today, checkout_today = runtime.today_counts()
+    return {
+        "ts": now,
+        "people_now": store["people_now"], "unique_today": today, "checkout_today": checkout_today,
+        "entries": store["entries"], "exits": store["exits"], "peak": store["peak"], "peak_at": store["peak_at"],
+        "dwell": store["dwell"], "staff_now": store["staff_now"],
+        "areas": [{"id": a["id"], "name": a["name"], "kind": a["kind"], "inside": a["inside"]} for a in store["areas"]],
+        "people": [{"gid": p["gid"], "x": p["x"], "y": p["y"], "color": p["color"], "staff": p["staff"],
+                    "buyer": p["buyer"]} for p in store["people"] if p["confirmed"] and p["x"] is not None],
+        "cameras": [{"id": c["id"], "name": c["name"], "enabled": c["enabled"], "connected": c["connected"],
+                     "fps": c["fps"], "health": {k: c["health"].get(k) for k in ("state", "message", "since")}}
+                    for c in cams],
+        "alerts": runtime.alerts.update(cfg, store["people_now"], store["areas"], cams, now),
     }
 
 
@@ -319,9 +353,12 @@ NUMERIC_RANGES = {  # clave: (mínimo, máximo, nombre para el mensaje)
     "buyer_seconds": (5, 600, "El tiempo en cajas para contar como \"pasó por caja\""),
     "staff_hours": (0, 24, "Las horas para considerar a alguien personal"),
     "staff_zone_seconds": (1, 600, "El tiempo en zona de personal"),
+    "alert_capacity": (0, 2000, "El aforo máximo"),
+    "alert_queue_people": (0, 50, "Las personas en fila para avisar"),
 }
 CHOICES = {
     "track_point": ("center", "bottom"),
+    "detector": ("preciso", "rapido"),
     "heatmap_mode": ("live", "accum"),
 }
 BOOLEANS = ("show_boxes", "show_trails", "show_heatmap", "show_zones", "show_line", "privacy_blur",
@@ -563,6 +600,15 @@ async def patch_cam(cid: str, request: Request):
     return cam
 
 
+@app.post("/api/cams/{cid}/health/reset")
+def cam_health_reset(cid: str):
+    cr = runtime.cams.get(cid)
+    if cr is None:
+        raise HTTPException(404, "Esa cámara no está en marcha.")
+    cr.pipeline.health.reset_reference()
+    return cr.pipeline.health.snapshot()
+
+
 @app.delete("/api/cams/{cid}")
 def delete_cam(cid: str):
     cams, cam = _find_cam(cid)
@@ -749,6 +795,29 @@ def cloud_disconnect():
 def cloud_sync_now():
     runtime.cloud.sync_now()
     return {"ok": True}
+
+
+# ---- copias de seguridad ---------------------------------------------------------------------
+@app.get("/api/backup")
+def backup_status():
+    return runtime.backup.status()
+
+
+@app.post("/api/backup/now")
+async def backup_now():
+    try:
+        await asyncio.to_thread(runtime.backup.run_now)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"No se pudo hacer la copia: {e}") from e
+    return runtime.backup.status()
+
+
+@app.put("/api/backup")
+async def backup_config(request: Request):
+    try:
+        return runtime.backup.set_extra_dir(str((await request.json()).get("extra_dir", "")))
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
 
 
 @app.get("/api/store/hourly")

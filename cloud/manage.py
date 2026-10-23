@@ -18,7 +18,8 @@ from sqlalchemy.engine import Engine
 
 from cloud import config, licencia
 from cloud.db import organizations, sites, users
-from cloud.security import hash_password, new_session_token, new_site_key, sha256
+from cloud.cuentas import _norm_code, new_recovery_code
+from cloud.security import hash_password, new_site_key, sha256
 
 TAILSCALE_NET = ipaddress.ip_network("100.64.0.0/10")
 LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost", "testclient"}
@@ -112,11 +113,13 @@ def register(app: FastAPI, engine: Engine, current_user, set_session) -> None:
         with engine.begin() as conn:
             if conn.execute(select(func.count()).select_from(users)).scalar_one():
                 raise HTTPException(409, "La configuración inicial ya se hizo. Inicia sesión.")
-            oid = conn.execute(insert(organizations).values(name=empresa)).inserted_primary_key[0]
+            recovery = new_recovery_code()
+            oid = conn.execute(insert(organizations).values(name=empresa, recovery_hash=sha256(_norm_code(recovery)))
+                               ).inserted_primary_key[0]
             uid = conn.execute(insert(users).values(org_id=oid, email=email, name=nombre, role="hq",
                                                     password_hash=hash_password(password))).inserted_primary_key[0]
             set_session(conn, response, uid)
-        return {"ok": True}
+        return {"ok": True, "recovery_code": recovery}
 
     # ---- vista general -------------------------------------------------------------------
     @app.get("/api/manage")
@@ -192,6 +195,32 @@ def register(app: FastAPI, engine: Engine, current_user, set_session) -> None:
                 raise HTTPException(400, str(e)) from e
             conn.execute(update(organizations).where(organizations.c.id == org["id"]).values(license_code=code))
         return {"ok": True, "sites_allowed": data["sedes"]}
+
+    # ---- copias de seguridad -------------------------------------------------------------
+    def backup_manager():
+        if app.state.backup is None:
+            raise HTTPException(404, "Las copias de seguridad solo funcionan en el programa instalado.")
+        return app.state.backup
+
+    @app.get("/api/manage/backup")
+    def backup_status(user: dict = Depends(manager)):
+        return backup_manager().status()
+
+    @app.post("/api/manage/backup/now")
+    def backup_now(user: dict = Depends(manager)):
+        bm = backup_manager()
+        try:
+            bm.run_now()
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(500, f"No se pudo hacer la copia: {e}") from e
+        return bm.status()
+
+    @app.put("/api/manage/backup")
+    async def backup_config(request: Request, user: dict = Depends(manager)):
+        try:
+            return backup_manager().set_extra_dir(str((await request.json()).get("extra_dir", "")))
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
 
     # ---- usuarios ------------------------------------------------------------------------
     @app.post("/api/manage/users")

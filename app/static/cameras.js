@@ -27,6 +27,10 @@
   function statusPill(c) {
     if (!c.enabled) return '<span class="pill">Deshabilitada</span>';
     if (!c.connected) return `<span class="pill bad" title="${esc(c.error || '')}">Sin señal</span>`;
+    const h = c.health || {};
+    if (h.state === 'tapada') return `<span class="pill bad" title="${esc(h.message)}">Tapada u oscura</span>`;
+    if (h.state === 'movida') return `<span class="pill bad" title="${esc(h.message)}">Se movió</span>
+      <button class="btn small" data-health-reset="${esc(c.id)}" title="La cámara está bien en su posición nueva">Aceptar posición</button>`;
     return `<span class="pill ok">${c.fps.toFixed(1)} FPS</span>`;
   }
 
@@ -54,6 +58,11 @@
       try { await api(`/api/cams/${id}`, json('PATCH', { [f]: v })); toast('Cámara actualizada'); }
       catch (e) { toast(e.message, true); }
       setTimeout(load, 1500);
+    }));
+    $('#camsList').querySelectorAll('[data-health-reset]').forEach(b => b.addEventListener('click', async () => {
+      if (!await window.tqConfirm('¿La cámara está bien en su posición actual? Se tomará como referencia nueva. Si cuenta en el plano, vuelve a calibrarla.', 'Aceptar posición')) return;
+      try { await api(`/api/cams/${b.dataset.healthReset}/health/reset`, { method: 'POST' }); toast('Posición aceptada'); load(); }
+      catch (e) { toast(e.message, true); }
     }));
     $('#camsList').querySelectorAll('[data-a]').forEach(b => b.addEventListener('click', async () => {
       const id = b.closest('tr').dataset.cam, cam = cams.find(c => c.id === id);

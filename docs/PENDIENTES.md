@@ -2,8 +2,8 @@
 
 ## Antes de vender
 
-- [ ] **Licencia del detector**: Ultralytics YOLO11 es AGPL-3.0 (ver README, sección 13). Para vender Traffiqui hay
-      que comprar la licencia empresarial de Ultralytics o cambiar a un detector Apache-2.0 (YOLOX, RTMDet, RT-DETR).
+- [x] **Licencia del detector**: cambiado a D-FINE (Apache-2.0) en ONNX; mejor precisión que YOLO11n (README, sección 6).
+- [ ] **Medir la precisión en la tienda beta** (conteo manual contra el sistema) con el detector nuevo.
 
 ## Distribución como programa de Windows (.exe)
 
@@ -12,11 +12,11 @@
 - [ ] **Clave pública de licencias**: Andrés ejecuta `python -m cloud.licencia crear-claves` una vez y sube
       `cloud/licencia_publica.txt`. Sin ella, los instaladores solo permiten 1 sede por empresa.
 - [ ] **Probar el instalador en un PC real** de tienda y de sede principal (cámaras, Tailscale, firewall).
-- [ ] **Separar base pesada y código**: Python + OpenVINO/PyTorch + modelo se instalan una vez;
-      las actualizaciones solo traen el código (pocos MB). Valorar usar solo OpenVINO para reducir tamaño.
+- [x] **Separar base pesada y código**: base (Python, librerías, modelos) + `codigo\`; instalador de
+      actualización de pocos MB con control de versión de la base (`packaging/BASE_VERSION`). Sin PyTorch.
 - [x] **Datos fuera del programa**: `C:\ProgramData\Traffiqui`; actualizar o reinstalar no borra nada.
       Las bases se migran solas al arrancar.
-- [ ] **Copias de seguridad** automáticas de `C:\ProgramData\Traffiqui` en la sede principal.
+- [x] **Copias de seguridad** automáticas diarias (tienda y sede principal), con carpeta extra opcional.
 
 ## Licencias
 
@@ -47,4 +47,15 @@
 ## Acceso remoto
 
 - [x] Las tiendas envían sus cifras a la sede principal por Tailscale.
-- [ ] Ver el panel completo de una tienda (cámaras, plano) desde la sede principal: fase 2 de la multisede.
+- [x] Vista completa de cada tienda desde la sede principal (en vivo y analítica): fase 2 de la multisede.
+- [ ] Ver el vídeo de una cámara desde la sede principal (hoy, a propósito, solo viajan números).
+
+## Cuentas y seguridad
+
+- [x] Límite de intentos de inicio de sesión (5 por correo, 20 por IP, 15 min).
+- [x] Recuperación de contraseña: código de recuperación, enlace por correo (SMTP opcional) y reseteo por la sede principal.
+
+## Alertas
+
+- [x] Aforo, fila en caja (opcional), cámara sin señal / tapada / movida y sede sin enviar datos, con historial.
+- [ ] Avisos de alertas por correo o WhatsApp (hoy se ven en el panel).

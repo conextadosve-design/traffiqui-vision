@@ -1,4 +1,4 @@
-"""Hilo de inferencia: YOLO11n (solo personas) + ByteTrack + overlays."""
+"""Hilo de inferencia: detector de personas en ONNX + ByteTrack + overlays."""
 from __future__ import annotations
 
 import logging
@@ -12,10 +12,11 @@ import cv2
 import numpy as np
 import supervision as sv
 
-from app.config import Settings
+from app.config import DATA_DIR, Settings
 from app.vision.capture import CaptureThread
 from app.vision.colors import color_for_id, hex_for_id, text_color_for
 from app.vision.fusion import Observation, StoreFusion, appearance_descriptor
+from app.vision.health import CameraHealth
 from app.vision.metrics import MetricsProcessor
 from app.vision.model import load_model
 from app.vision.plan import plan_areas, plan_to_image, project_point
@@ -91,6 +92,7 @@ class PipelineThread(threading.Thread):
         # las áreas del plano funcionan con todas las cámaras a través de la fusión
         self.primary = primary
         self.fusion = fusion
+        self.health = CameraHealth(camera_id, DATA_DIR / "camaras")
         self._gid: dict[int, int] = {}       # track local -> ID global
         self._app_count: dict[int, int] = {}
         self._stop_event = threading.Event()
@@ -187,10 +189,10 @@ class PipelineThread(threading.Thread):
     def _process(self, frame: np.ndarray, cfg: dict, now: float) -> np.ndarray:
         self.frame_shape = frame.shape[:2]
         t0 = time.perf_counter()
-        result = self.model.predict(frame, imgsz=cfg["imgsz"], conf=cfg["confidence"],
-                                    classes=[0], verbose=False)[0]
+        found = self.model.detect(frame, conf=cfg["confidence"])
         self.infer_ms = (time.perf_counter() - t0) * 1000
-        raw = sv.Detections.from_ultralytics(result)
+        raw = sv.Detections(xyxy=found.xyxy, confidence=found.confidence,
+                            class_id=np.zeros(len(found.confidence), dtype=int))
         raw_boxes = [tuple(int(v) for v in b) for b in raw.xyxy]
         dets = self._ensure_tracker(cfg).update_with_detections(raw)
 
@@ -316,22 +318,30 @@ class PipelineThread(threading.Thread):
         txt = f"{self.fps:4.1f} FPS  |  {self.infer_ms:3.0f} ms  |  {self.backend}"
         label(frame, txt, (8, 30), INK, (255, 255, 255), size=14)
 
-    def run(self) -> None:
+    def _load_detector(self, mode: str) -> None:
         try:
-            self.model, self.backend = load_model()
+            self.model, self.backend = load_model(mode)
+            self.error = None
         except Exception as exc:  # sin modelo no hay visión; el servidor sigue y muestra el error
             self.error = f"No se pudo cargar el modelo: {exc}"
             log.exception(self.error)
+        self._detector_mode = mode
+
+    def run(self) -> None:
+        self._load_detector(self.settings.get("detector"))
         last_id = -1
         stamps: deque[float] = deque()
         while not self._stop_event.is_set():
             cfg = self.settings.snapshot()
+            if cfg["detector"] != self._detector_mode:   # cambio en Configuración: se aplica sin reiniciar
+                self._load_detector(cfg["detector"])
             if self.error:
                 self._publish(self._placeholder(cfg, "Error al cargar el modelo",
-                                                "Revisa la consola; ejecuta run.bat con internet la primera vez."))
+                                                "Falta models/detector-personas.onnx: reinstala Traffiqui."))
                 self._stop_event.wait(1.0)
                 continue
             if not self.capture.connected:
+                self.health.no_signal()
                 msg = "Cámara desconectada, reintentando…"
                 if self.capture.is_file:
                     msg = "No se pudo abrir el video, reintentando…"
@@ -340,8 +350,10 @@ class PipelineThread(threading.Thread):
                 continue
             fid, frame = self.capture.latest()
             if frame is None or fid == last_id:
+                self.health.no_signal()
                 time.sleep(0.003)
                 continue
+            self.health.observe(frame)
             max_fps = float(self.camera_cfg(cfg).get("max_fps") or 0)
             if max_fps > 0 and stamps and time.perf_counter() - stamps[-1] < 1.0 / max_fps:
                 time.sleep(0.005)  # límite de FPS por cámara para repartir el CPU entre varias

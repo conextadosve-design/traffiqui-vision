@@ -7,6 +7,7 @@
   let data = null;
 
   let toastTimer;
+  window.tqToast = (m, e) => toast(m, e);
   function toast(msg, isError) {
     const t = $('#toast');
     t.textContent = msg; t.hidden = false; t.className = `toast show${isError ? ' err' : ''}`;
@@ -76,7 +77,7 @@
       const site = d.sites.find(s => s.id === u.site_id);
       const sees = u.role === 'hq' ? 'Todas las sedes' : `Solo ${esc(site?.name || 'una sede')}`;
       const btn = u.id === d.me ? '<span class="note">tú</span>'
-        : `<button class="btn small${u.active ? ' danger' : ''}" data-user="${u.id}" data-active="${u.active ? 0 : 1}">${u.active ? 'Desactivar' : 'Activar'}</button>`;
+        : `<button class="btn small" data-pass="${u.id}">Contraseña</button> <button class="btn small${u.active ? ' danger' : ''}" data-user="${u.id}" data-active="${u.active ? 0 : 1}">${u.active ? 'Desactivar' : 'Activar'}</button>`;
       return `<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${sees}</td>
         <td><span class="state ${u.active ? 'ok' : ''}">${u.active ? 'Activo' : 'Desactivado'}</span></td><td class="num">${btn}</td></tr>`;
     }).join('');
@@ -136,8 +137,46 @@
       if (out) $('#userForm').reset();
     });
     $('#usersList').addEventListener('click', ev => {
+      const p = ev.target.closest('button[data-pass]');
+      if (p) {
+        const u = data.users.find(x => String(x.id) === p.dataset.pass);
+        const pw = prompt(`Contraseña nueva para ${u.name} (mínimo 8 caracteres). Díselo en persona o por teléfono.`);
+        if (pw) act(() => api(`/api/manage/users/${u.id}/password`, 'POST', { password: pw }), 'Contraseña cambiada.');
+        return;
+      }
       const b = ev.target.closest('button[data-user]'); if (!b) return;
       act(() => api(`/api/manage/users/${b.dataset.user}/active`, 'POST', { active: b.dataset.active === '1' }));
+    });
+    $('#myPassForm').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      try {
+        await api('/api/me/password', 'POST', { current: $('#myCur').value, password: $('#myNew').value });
+        toast('Contraseña cambiada. Vuelve a iniciar sesión.'); setTimeout(() => { location.href = '/login'; }, 1500);
+      } catch (e) { toast(e.message, true); }
+    });
+    $('#newRecovery').onclick = async () => {
+      if (!confirm('¿Generar un código de recuperación nuevo? El anterior dejará de valer.')) return;
+      try { const out = await api('/api/manage/recovery-code', 'POST'); $('#recoveryValue').textContent = out.recovery_code; $('#recoveryBox').hidden = false; }
+      catch (e) { toast(e.message, true); }
+    };
+    const smtpLoad = async () => {
+      const s = await api('/api/manage/smtp');
+      $('#smtpState').textContent = s.configured ? `Configurado: ${s.user} en ${s.host}:${s.port}.` : 'Sin configurar.';
+      if (s.configured) { $('#smtpHost').value = s.host; $('#smtpPort').value = s.port; $('#smtpUser').value = s.user; $('#smtpFrom').value = s.from; }
+    };
+    $('#smtpForm').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const body = { host: $('#smtpHost').value, port: Number($('#smtpPort').value) || 587, user: $('#smtpUser').value,
+                     password: $('#smtpPass').value, from: $('#smtpFrom').value };
+      try { await api('/api/manage/smtp', 'PUT', body); $('#smtpPass').value = ''; toast('Correo configurado: te enviamos una prueba.'); smtpLoad(); }
+      catch (e) { toast(e.message, true); }
+    });
+    smtpLoad().catch(() => {});
+    api('/api/manage/alerts-config').then(c => { $('#offlineMin').value = c.offline_min; }).catch(() => {});
+    $('#offlineForm').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      try { await api('/api/manage/alerts-config', 'PUT', { offline_min: Number($('#offlineMin').value) }); toast('Guardado.'); }
+      catch (e) { toast(e.message, true); }
     });
     load();
     setInterval(load, 30000);

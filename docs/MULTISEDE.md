@@ -91,8 +91,9 @@ Sin licencia, cada empresa puede tener 1 sede (`FREE_SITES` en `cloud/licencia.p
 1b. ✅ **Todo local con instalador**: modo tienda / sede principal, primer uso, gestión de sedes, usuarios y
    licencias desde el panel, Tailscale, instalador de Windows generado por GitHub Actions
    (`packaging/`, `.github/workflows/instalador-windows.yml`). Guía: [INSTALACION.md](INSTALACION.md).
-2. **Tiempo real y vista de cada sede**: en vivo, analítica y 3D de cualquier sede. Los datos ya
-   llegan desde la fase 1 (recorridos, áreas, mapa de calor del plano): falta construir las vistas.
+2. ✅ **Tiempo real y vista de cada sede**: estado en vivo cada 3 s (personas en el plano, cajas, cámaras,
+   alertas), página por sede con analítica completa, comparativas (semana anterior, mismo día del mes
+   pasado) y alertas con historial (`cloud/live.py`, `cloud/site_reports.py`).
 3. **Reportes**: correo automático y Excel consolidado.
 
 ## Desarrollo

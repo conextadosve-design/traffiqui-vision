@@ -69,8 +69,11 @@ def port_in_use(port: int) -> bool:
 def build_app(mode: str):
     if mode == "sede-principal":
         os.environ.setdefault("TRAFFIQUI_COOKIE_SECURE", "0")
+        from app.backup import BackupManager
         from cloud.main import create_app
-        return create_app()
+        backup = BackupManager(DATA_DIR)   # en modo tienda las copias las arranca app.main
+        backup.start()
+        return create_app(backup=backup)
     from app.main import app
     return app
 

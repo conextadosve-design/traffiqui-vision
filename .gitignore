@@ -2,6 +2,11 @@
 __pycache__/
 .pytest_cache/
 data/
-models/
+models/*
+!models/detector-personas.onnx
+!models/detector-personas.json
+!models/detector-personas-rapido.onnx
+!models/detector-personas-rapido.json
+!models/LEEME.md
 *.pt
 yolo11n.pt

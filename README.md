@@ -19,13 +19,12 @@ No se guarda video ni imágenes de personas.
 1. **Instala Python 3.11** (o 3.12). Cualquiera de estas dos opciones:
    - Desde <https://www.python.org/downloads/>, marcando **"Add python.exe to PATH"**.
    - O en una terminal: `winget install Python.Python.3.11`
-2. **Copia la carpeta `traffiqui-vision`** a una ruta **corta**, por ejemplo `C:\traffiqui-vision`.
-   PyTorch trae archivos con rutas largas, y Windows limita las rutas a 260 caracteres. Si la carpeta
-   está muy anidada (más de ~110 caracteres), `run.bat` avisa y se detiene antes de instalar.
+2. **Copia la carpeta `traffiqui-vision`** a una ruta **corta**, por ejemplo `C:\traffiqui-vision`
+   (Windows limita las rutas a 260 caracteres; si la carpeta está muy anidada, `run.bat` avisa).
 3. **Haz doble clic en `run.bat`** (con internet la primera vez). El script:
    - crea el entorno virtual `.venv`;
-   - instala las dependencias de `requirements.txt` (versiones fijadas, ~1 GB, tarda unos minutos);
-   - descarga el modelo `yolo11n.pt` a `models/`;
+   - instala las dependencias de `requirements.txt` (versiones fijadas, ~200 MB, tarda unos minutos);
+   - usa el detector de personas que ya viene en `models/` (D-FINE, ver sección 6);
    - arranca el servidor y abre <http://localhost:8000> en el navegador.
 4. Las siguientes veces `run.bat` arranca directo y **sin internet**: solo reinstala si
    `requirements.txt` cambió.
@@ -48,7 +47,7 @@ run.bat --setup              :: solo instalar, no arrancar
 - Video con overlays dibujados en el servidor: recuadro y rastro del color de cada persona, etiqueta
   `ID 7 | 42 s` (ID y tiempo en cámara), zonas, línea y mapa de calor.
 - Panel lateral: personas ahora (con el pico y su hora), únicas hoy y de la sesión, entradas y salidas
-  por la línea, permanencia promedio y mediana, FPS reales y backend (pytorch u openvino).
+  por la línea, permanencia promedio y mediana, FPS reales y detector en uso.
 - Interruptores de capas: recuadros, rastros, mapa de calor, zonas, línea y privacidad.
 - Lista de personas en cuadro: chip con su color, ID y tiempo.
 
@@ -76,7 +75,7 @@ Una persona cuenta cuando pasa de un lado al otro **dentro del largo del segment
 - **Exportar CSV**: separado por `;` y con coma decimal, para abrirlo directo en Excel en español.
 
 ### Configuración
-Cámara (buscar índices 0–5, **Probar**, **Usar esta cámara**), resolución, `imgsz`, confianza,
+Cámara (buscar índices 0–5, **Probar**, **Usar esta cámara**), resolución, detector (preciso o rápido), confianza,
 duración del rastro (1–10 s), punto de seguimiento (**centro** o **base** = pies, lo correcto con una
 cámara cenital en tienda), duración mínima para contar a una persona, espera de un track perdido, vida
 media del mapa de calor, umbral de "se detuvo" y privacidad. **Todo se guarda en SQLite y se aplica
@@ -239,17 +238,28 @@ parecida (todos de negro), grupos y mala iluminación generan errores. **Mide la
 caminata de prueba antes de presentar números, y considera excluir al personal (zonas de trabajo).
 
 ### Rendimiento con varias cámaras en esta PC
-Cada cámara usa su propio modelo (~30 ms por cuadro con OpenVINO en el Ryzen 5 5600G). A 8 FPS por cámara,
-esta PC aguanta del orden de 4–5 cámaras. Para más, la arquitectura permite repartir las cámaras en
+Cada cámara usa su propio detector (~85 ms por cuadro con el detector preciso en un Xeon de 4 núcleos;
+~45 ms con el rápido). Con 2–3 cámaras por PC conviene limitar cada una a 5–8 FPS, o pasar al detector
+rápido en Configuración. Para más, la arquitectura permite repartir las cámaras en
 varios equipos (un mini PC cada 4–6 cámaras) o usar un equipo con GPU.
 ### Trabajar en la nube (sesiones de Claude)
 El código vive en GitHub y se puede programar desde una sesión de Claude en la nube. La nube **no tiene
 acceso a tus cámaras**: sirve para cambiar código, correr los tests y revisar la analítica con datos de
 prueba. El video en vivo y la calibración se prueban en la PC de la tienda.
-- Instalación en la nube (Linux): `bash scripts/setup_cloud.sh`. Instala PyTorch solo-CPU y OpenCV
-  sin pantalla, y corre los tests.
+- Instalación en la nube (Linux): `bash scripts/setup_cloud.sh`. Instala las dependencias (OpenCV
+  sin pantalla) y corre los tests.
 - Para traer los cambios a la PC: `git pull` dentro de la carpeta y luego `run.bat`, que reinstala
   solo si cambió `requirements.txt`.
+
+### Salud de cámaras, alertas y copias de seguridad
+- **Salud de cada cámara** (Configuración → Cámaras de la tienda): *sin señal*, *tapada u oscura* (sin contraste
+  ni bordes durante 10 s) o *se movió* (los bordes fijos de la escena ya no coinciden con su referencia durante
+  30 s; la referencia, solo bordes, se guarda en `datos/camaras/`). Tras recolocar una cámara a propósito,
+  "Aceptar posición" (y recalibrarla si cuenta en el plano).
+- **Alertas** (Configuración → General): aforo máximo y fila larga en caja (0 = desactivadas), más las cámaras
+  con problemas. Se ven arriba del panel y viajan a la sede principal, que guarda su historial.
+- **Copias de seguridad**: una al día de cada base, en `datos/copias/` (7 diarias y 4 semanales), con una
+  carpeta extra opcional (otro disco, OneDrive o Google Drive).
 
 ### Multisede: conectar la tienda con la sede principal
 Configuración → **Sede principal**: pega la dirección del servidor central y la **clave de la sede** (empieza por
@@ -294,46 +304,43 @@ borde no corte la visita.
   conviene una cámara **cenital o en diagonal alta**, con el punto de seguimiento en **base (pies)**.
   Con la cámara frontal las personas se tapan entre sí y la "posición en el piso" del mapa de calor es
   solo aproximada.
-- Personas muy lejanas o parcialmente visibles se detectan peor con `imgsz` bajo.
+- Personas muy lejanas o muy tapadas se detectan peor, sobre todo con el detector rápido.
 - Las coordenadas de línea y zonas se guardan normalizadas (0–1). Si mueves la cámara, hay que
   redibujarlas.
 - Si se cambia la resolución en medio de un intervalo, las posiciones del mapa de calor aún no
   guardadas de ese intervalo (máximo 5 min) se descartan.
 
-## 6. Rendimiento medido
+## 6. Detector de personas y rendimiento
 
-PC de prueba: **AMD Ryzen 5 5600G** (6 núcleos), sin GPU dedicada, webcam 640×480.
+El detector es **D-FINE** (licencia **Apache-2.0**, se puede vender), exportado a ONNX y ejecutado con
+`onnxruntime` en CPU: la app no necesita PyTorch. Hay dos modelos en `models/` (ver `models/LEEME.md`):
 
-| Backend | imgsz | Inferencia (mediana) | FPS máx. del modelo |
+| Detector | Red | Precisión personas (AP, COCO) | ms por cuadro* |
 |---|---|---|---|
-| PyTorch | 320 | 24 ms | ~41 |
-| PyTorch | **480** | **36 ms** | **~28** |
-| PyTorch | 640 | 48 ms | ~21 |
-| OpenVINO | 320 | 16 ms | ~61 |
-| OpenVINO | **480** | **30 ms** | **~33** |
-| OpenVINO | 640 | 48 ms | ~21 |
+| **Preciso** (por defecto) | D-FINE-S, 512 px | **0,540** | ~85 |
+| Rápido | D-FINE-N, 512 px | 0,445 | ~45 |
+| *Anterior: YOLO11n (AGPL-3.0)* | 480 px | 0,457 | ~21 |
 
-En la app los **FPS reales son 15**: el límite es la webcam, que entrega 15 cuadros/s con poca luz, no
-el CPU. La meta de 8 FPS se cumple con holgura con cualquiera de los dos backends. Las mediciones se
-hicieron con la app corriendo a la vez, así que son conservadoras.
+\* Mediana en un Xeon de 4 núcleos a 2,1 GHz, solo CPU. Con la misma precisión que el detector anterior
+(0,92 de las detecciones son personas de verdad), D-FINE-S encuentra el **80 %** de las personas frente
+al 68 %: por eso la confianza mínima por defecto es 0,65.
 
-Si en otra PC los FPS bajan de 8: (1) baja `imgsz` a 320; (2) usa 640×480; (3) exporta a OpenVINO;
-(4) cierra otras apps que usen CPU.
+Si los FPS bajan de 8: (1) limita los FPS máx. de cada cámara a 5–8; (2) usa 640×480 o el substream;
+(3) cambia al detector rápido en Configuración; (4) cierra otras apps que usen CPU.
 
-## 7. Exportar a OpenVINO (opcional)
+## 7. Probar otros detectores
 
-En CPUs **Intel**, OpenVINO acelera la inferencia aproximadamente 2×. En el **AMD** de prueba la mejora
-fue de ~15 % a imgsz=480 y de ~50 % a imgsz=320.
+`tools/detector/` (dependencias en `tools/detector/requirements.txt`, solo para desarrollo):
 
-```bat
-.venv\Scripts\python.exe -m pip install -r requirements-openvino.txt
-.venv\Scripts\python.exe export_openvino.py
+```bash
+python tools/detector/exportar.py ustc-community/dfine-small-coco models/candidato --size 512
+python tools/detector/evaluar.py coco_val.parquet --n 500 models/candidato.onnx models/detector-personas.onnx
 ```
 
-Esto crea `models/yolo11n_openvino_model/`. Si esa carpeta existe, la app la usa automáticamente al
-iniciar (el panel muestra "openvino" junto a los FPS). Se exporta con forma dinámica, así que puedes
-seguir cambiando `imgsz`. Para volver a PyTorch, borra la carpeta. Si existe el modelo pero falta el
-paquete `openvino`, la app avisa en consola y usa PyTorch.
+`exportar.py` convierte modelos de Hugging Face (D-FINE, RT-DETRv2, RF-DETR…) al formato de la app;
+`envolver_onnx.py` adapta un ONNX ya hecho; `evaluar.py` mide la precisión COCO (solo personas) y la
+velocidad. Se evaluaron D-FINE N/S, DEIMv2-N, RF-DETR-N y RT-DETRv2-R18; D-FINE-S a 512 px dio el mejor
+equilibrio entre acierto y velocidad en CPU.
 
 ## 8. Arquitectura
 
@@ -342,8 +349,8 @@ Tres hilos, para que el video no se congele:
 1. **Captura** (`app/vision/capture.py`): lee la webcam con `cv2.VideoCapture(i, cv2.CAP_DSHOW)` y
    guarda **solo el último cuadro**. Si la cámara se desconecta, reintenta cada 3 s y el stream muestra
    "Cámara desconectada, reintentando…". Con `--source video.mp4` lee el archivo en bucle.
-2. **Inferencia** (`app/vision/pipeline.py`): toma el último cuadro, corre YOLO11n (solo clase 0 =
-   persona), aplica ByteTrack de `supervision`, actualiza métricas, mapa de calor y rastros, dibuja los
+2. **Inferencia** (`app/vision/pipeline.py`): toma el último cuadro, corre el detector de personas
+   (D-FINE en ONNX), aplica ByteTrack de `supervision`, actualiza métricas, mapa de calor y rastros, dibuja los
    overlays y codifica el JPEG una sola vez.
 3. **Servidor** (`app/main.py`, FastAPI + Uvicorn): `/video` (MJPEG), `/ws` (métricas cada 1 s) y la API.
 
@@ -364,7 +371,9 @@ app/
     metrics.py         une tracks con conteo y mapa de calor; dibuja zonas y línea
     colors.py          color determinístico por ID (proporción áurea en HSV)
     textdraw.py        texto con tildes sobre el video (Pillow)
-    model.py           descarga y carga del modelo (PyTorch u OpenVINO)
+    detector.py        detector de personas ONNX (onnxruntime)
+    model.py           elige el modelo (preciso o rápido)
+    health.py          salud de cada cámara: sin señal, tapada, movida
     plan.py            plano en metros, validación, homografía cámara → plano, huella de cámara
     fusion.py          ID global entre cámaras (superposición, traspaso, re-entrada), áreas, recorridos, calor del plano
   storage/
@@ -376,7 +385,8 @@ app/
     cameras.js         cámaras de la tienda y calibración imagen ↔ plano
     store3d.js         vista 3D (Three.js r169 local, en static/vendor/three)
 tests/                 pytest, sin cámara
-export_openvino.py
+tools/detector/        exportar y evaluar detectores
+packaging/             instalador de Windows (base + código aparte)
 run.bat
 ```
 
@@ -456,8 +466,8 @@ IDs globales, descriptor de ropa, áreas del plano con cámaras asignadas, recor
 | "Cámara desconectada, reintentando…" | Revisa el USB o cierra Zoom, Teams o la app Cámara, que bloquean la webcam. Se reintenta cada 3 s. En Configuración puedes elegir otra cámara. |
 | "No se encontró Python 3.11 ni 3.12" | Instala Python (paso 1) y vuelve a abrir `run.bat`. |
 | La instalación falla | Revisa la conexión (solo se necesita la primera vez). Si persiste, borra `.venv` y reintenta. |
-| "La ruta de esta carpeta es muy larga" / `OSError: No such file or directory ... torch\include\...` | Mueve la carpeta a `C:\traffiqui-vision`, borra `.venv` y vuelve a ejecutar `run.bat`. |
-| "Error al cargar el modelo" | Ejecuta `run.bat` una vez con internet para descargar `yolo11n.pt`. |
+| "La ruta de esta carpeta es muy larga" | Mueve la carpeta a `C:\traffiqui-vision`, borra `.venv` y vuelve a ejecutar `run.bat`. |
+| "Error al cargar el modelo" | Falta `models/detector-personas.onnx`: vuelve a descargar el proyecto completo (o reinstala Traffiqui). |
 | FPS bajos | Ver la sección 6. Con varias cámaras, baja los FPS máx. de cada una a 5. |
 | Una cámara RTSP queda «Sin señal» | Prueba la URL en VLC (Medio → Abrir ubicación de red). Revisa usuario, contraseña, que la PC esté en la misma red y usa el substream. |
 | Los pasillos dibujados sobre el video no coinciden con el piso | Recalibra con más puntos, todos sobre el piso y bien separados. |
@@ -465,10 +475,9 @@ IDs globales, descriptor de ropa, áreas del plano con cámaras asignadas, recor
 
 ## 13. Licencia y dependencias
 
-- **Ultralytics YOLO11 se distribuye bajo AGPL-3.0.** Es válido para este prototipo interno. **Antes
-  de comercializar Traffiqui** hay que comprar la **licencia empresarial de Ultralytics** o cambiar a
-  un detector con licencia permisiva (por ejemplo RT-DETR de PaddleDetection, o YOLOX y RTMDet, que
-  son Apache-2.0) y reentrenar o reexportar.
+- **Detector D-FINE: Apache-2.0** (pesos de `ustc-community` en Hugging Face, ver `models/LEEME.md`).
+  Se puede distribuir y vender; hay que conservar el aviso de licencia y la atribución. Ultralytics
+  (AGPL-3.0) ya no forma parte de la app.
 - `supervision` está fijado en **0.30.9**, la última versión que incluye `sv.ByteTrack`. En 0.31 el
   tracker pasó al paquete aparte `trackers`, así que actualizar `supervision` requiere migrar.
 - Chart.js 4.4.6 (MIT) se sirve desde `app/static/` para funcionar sin internet.
