@@ -1,13 +1,14 @@
 # Pendientes
 
-Estado al 23-10-2026: `main` incluye los pull requests #2 (multisede, instalador, licencias) y #3 (detector
-D-FINE, fase 2, alertas, copias, cuentas). 118 pruebas automáticas pasan; el instalador de Windows se genera
+Estado al 23-10-2026: `main` incluye los pull requests #2 (multisede, instalador, licencias), #3 (detector
+D-FINE, fase 2, alertas, copias, cuentas) y #4 (interfaz nueva, en vivo automático). 121 pruebas automáticas pasan; el instalador de Windows se genera
 y se prueba solo en GitHub Actions (138 MB completo, 2 MB la actualización).
 
 ## Hecho recientemente
 
 | Fecha | Qué | Dónde |
 |---|---|---|
+| 23-10-2026 | Arreglo: una persona quieta frente a la cámara contaba como varias (ByteTrack no recibía las detecciones dudosas; re-entrada en el mismo sitio más tolerante con la ropa) | `app/vision/pipeline.py`, `app/vision/fusion.py` |
 | 23-10-2026 | Interfaz rediseñada: ventana propia de Windows, pestañas por tarea, panel de la sede principal cómodo en el teléfono y guía de bienvenida | `app/static/`, `cloud/static/`, `app/launcher.py` |
 | 23-10-2026 | En vivo automático: cada 3 s solo mientras alguien mira la sede, si no cada 30 s (~82 % menos peticiones) | `cloud/live.py`, `app/cloud_sync.py` |
 | 23-10-2026 | Detector D-FINE (Apache-2.0) en ONNX: más preciso que YOLO11n y sin PyTorch ni Ultralytics | README §6, `tools/detector/` |
@@ -24,6 +25,7 @@ y se prueba solo en GitHub Actions (138 MB completo, 2 MB la actualización).
 
 - [x] **Licencia del detector**: cambiado a D-FINE (Apache-2.0) en ONNX; mejor precisión que YOLO11n (README, sección 6).
 - [ ] **Medir la precisión en la tienda beta** (conteo manual contra el sistema) con el detector nuevo.
+      Incluir una prueba de "una persona quieta 5 minutos frente a cada cámara": debe sumar 1 visita.
 - [ ] **Términos de uso, política de privacidad y cartel** de aviso de cámaras para las tiendas.
 - [ ] **Condiciones de la beta por escrito**: "gratis de por vida" solo para la tienda beta.
 - [ ] **Alinear el PDF de invitación** con lo construido (PC en la tienda, Tailscale, "pasaron por caja").
