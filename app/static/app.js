@@ -25,7 +25,7 @@ async function api(path, opts = {}) {
   try {
     r = await fetch(path, opts);
   } catch {
-    throw new Error('No hay conexión con el servidor. Revisa que la ventana de run.bat siga abierta.');
+    throw new Error('No hay conexión con Traffiqui. Revisa que siga abierto (icono junto al reloj).');
   }
   const body = (r.headers.get('content-type') || '').includes('json') ? await r.json() : null;
   if (!r.ok) throw new Error(body?.detail || `Error ${r.status} del servidor.`);
@@ -56,6 +56,8 @@ function patchLater(key, value, ms = 350) {
 const pad2 = n => String(n).padStart(2, '0');
 const hhmm = ts => { const d = new Date(ts * 1000); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
 const fmtSecs = s => s >= 60 ? `${Math.floor(s / 60)} min ${Math.round(s % 60)} s` : `${Math.round(s)} s`;
+/** Duración para una cifra grande: «3<small> min</small> 12<small> s</small>». */
+const dur = s => s >= 60 ? `${Math.floor(s / 60)}<small> min</small> ${Math.round(s % 60)}<small> s</small>` : `${Math.round(s)}<small> s</small>`;
 const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 // ---------------------------------------------------------------- pestañas
@@ -92,7 +94,7 @@ $$('.tab').forEach(t => t.addEventListener('click', () => showView(t.dataset.vie
 function renderAlerts() {
   const items = [];
   if (!serverOnline) {
-    items.push(['El servidor no responde.', 'Revisa que la ventana de run.bat siga abierta. Si la cerraste, vuelve a ejecutar run.bat. Reintentando…']);
+    items.push(['Traffiqui no responde.', 'Revisa que siga abierto (icono junto al reloj de Windows); si lo cerraste, ábrelo desde el escritorio. Reintentando…']);
   } else if (metrics) {
     if (metrics.model_error) {
       items.push(['No se pudo cargar el modelo de detección.', metrics.model_error]);
@@ -113,11 +115,13 @@ function renderAlerts() {
   $('#alerts').innerHTML = items.map(([t, d]) =>
     `<div class="alert" role="alert"><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join('');
   const cam = $('#pillCam');
-  cam.className = 'pill ' + (metrics && serverOnline ? (metrics.camera_connected ? 'ok' : 'bad') : '');
-  cam.textContent = metrics?.camera_connected ? 'Cámara conectada' : 'Cámara sin señal';
+  cam.classList.toggle('ok', !!(metrics && serverOnline && metrics.camera_connected));
+  cam.classList.toggle('bad', !!(metrics && serverOnline && !metrics.camera_connected));
+  cam.textContent = metrics?.camera_connected ? 'Cámara lista' : 'Cámara sin señal';
   const srv = $('#pillServer');
-  srv.className = 'pill ' + (serverOnline ? 'ok' : 'bad');
-  srv.textContent = serverOnline ? 'En línea' : 'Sin conexión';
+  srv.classList.toggle('ok', serverOnline);
+  srv.classList.toggle('bad', !serverOnline);
+  srv.textContent = serverOnline ? 'Contando' : 'Sin conexión';
 }
 
 // ---------------------------------------------------------------- en vivo
@@ -126,13 +130,13 @@ function renderLive(m) {
   $('#kPeak').textContent = (m.peak ? `Pico: ${m.peak} a las ${hhmm(m.peak_at)}` : 'Pico: –')
     + (m.store?.staff_now ? ` · ${m.store.staff_now} de personal (no cuentan)` : '');
   $('#kToday').textContent = m.unique_today;
-  $('#kSession').textContent = `Sesión: ${m.unique_session}`;
+  $('#kSession').textContent = m.unique_session;
   $('#kIn').textContent = m.entries;
   $('#kOut').textContent = m.exits;
-  $('#kDwell').innerHTML = m.dwell.avg ? `${Math.round(m.dwell.avg)}<small> s</small>` : '–';
+  $('#kDwell').innerHTML = m.dwell.avg ? dur(m.dwell.avg) : '–';
   $('#kMedian').textContent = m.dwell.median ? `Mediana: ${fmtSecs(m.dwell.median)}` : 'Mediana: –';
-  $('#kFps').textContent = m.fps.toFixed(1);
-  $('#kInfer').textContent = `${Math.round(m.infer_ms)} ms · ${m.backend}`;
+  $('#kFps').innerHTML = `${m.fps.toFixed(1)}<small> imágenes/s</small>`;
+  $('#kInfer').textContent = `${Math.round(m.infer_ms)} ms por imagen · ${m.backend}`;
   const st = m.store || {};
   $('#kBuyers').textContent = st.has_checkout ? m.buyers_today : '–';
   $('#kConv').textContent = st.has_checkout
@@ -526,7 +530,7 @@ function renderAnalytics(d) {
   $('#tOut').textContent = t.exits;
   $('#tPeak').textContent = t.peak;
   $('#tPeakAt').textContent = t.peak_at ? `a las ${hhmm(t.peak_at)}` : '';
-  $('#tDwell').innerHTML = d.dwell.avg ? `${Math.round(d.dwell.avg)}<small> s</small>` : '–';
+  $('#tDwell').innerHTML = d.dwell.avg ? dur(d.dwell.avg) : '–';
   $('#tMedian').textContent = d.dwell.median ? `Mediana: ${fmtSecs(d.dwell.median)}` : '';
   const maxPassed = Math.max(1, ...d.zones.map(z => z.passed));
   $('#zoneTable').innerHTML = d.zones.length ? d.zones.map(z => `
@@ -535,7 +539,7 @@ function renderAnalytics(d) {
       <td class="num">${z.stopped}</td>
       <td class="num">${Math.round(z.stop_rate * 100)} %</td>
       <td class="num">${fmtSecs(z.avg_dwell)}</td></tr>`).join('')
-    : '<tr><td colspan="5" class="empty">Sin visitas a zonas en este rango. Dibuja zonas en la pestaña En vivo.</td></tr>';
+    : '<tr><td colspan="5" class="empty">Sin visitas a zonas en este rango. Puedes dibujar zonas en En vivo → Opciones del video.</td></tr>';
   drawCharts(d);
 }
 
@@ -570,6 +574,22 @@ function bucketLabel(ts, d) {
 setInterval(() => { if (!$('#view-analytics').hidden && range !== 'custom') loadAnalytics(); }, 60000);
 // los colores de los gráficos cambian con el modo claro/oscuro
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => lastAnalytics && drawCharts(lastAnalytics));
+
+// ---------------------------------------------------------------- guía de bienvenida
+const TOUR = [
+  { icon: 'ojo', title: 'Bienvenido a Traffiqui',
+    text: 'Con las cámaras de tu tienda, Traffiqui cuenta cuántas personas entran, por dónde caminan y cuántas pasan por caja. Nunca guarda video ni fotos: solo números.' },
+  { icon: 'vivo', title: 'En vivo',
+    text: 'Lo que pasa ahora mismo: personas en la tienda, visitas de hoy, cuántas pasaron por caja y el video con cada persona marcada con un color.' },
+  { icon: 'informes', title: 'Informes y Cajas',
+    text: 'Elige hoy, la semana o el mes para ver las horas con más gente, cuánto tiempo se quedan y qué recorren quienes pasan por caja. Todo se puede descargar para Excel.' },
+  { icon: 'cubo', title: 'Mapa 3D y Plano',
+    text: 'El Mapa 3D muestra tu tienda con los pasillos coloreados según el movimiento. Para verlo se dibuja el Plano una sola vez, al instalar.' },
+  { icon: 'ajustes', title: 'Ajustes',
+    text: 'Cámaras, alertas (aforo y fila en caja), conexión con la sede principal y copias de seguridad. Puedes volver a ver esta guía con el botón «?» de arriba.' },
+];
+$('#helpBtn').onclick = () => TQ.tour.open(TOUR);
+setTimeout(() => TQ.tour('tienda', TOUR), 600);
 
 // ---------------------------------------------------------------- inicio
 loadConfig();

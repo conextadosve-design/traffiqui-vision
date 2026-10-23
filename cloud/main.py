@@ -21,10 +21,9 @@ from cloud.ingest import IngestError, ingest
 from cloud.reports import RANGES, org_report, resolve_range
 from cloud.site_reports import site_report
 from cloud.security import new_session_token, sha256, verify_password
+from app.vendor import vendor_file   # misma identidad visual que la app de la tienda
 
 STATIC_DIR = Path(__file__).parent / "static"
-CHART_JS = config.ROOT / "app" / "static" / "chart.umd.min.js"
-APP_CSS = config.ROOT / "app" / "static" / "styles.css"   # misma identidad visual que la app de la tienda
 COOKIE = "tq_session"
 
 STATUS_MSG = {
@@ -246,13 +245,13 @@ def create_app(engine: Engine | None = None, backup=None) -> FastAPI:
     def setup_page():
         return page("setup.html") if needs_setup() else RedirectResponse("/login")
 
-    @app.get("/vendor/chart.umd.min.js")
-    def chart_js():
-        return FileResponse(CHART_JS, media_type="text/javascript")
+    @app.get("/vendor/{name}")
+    def vendor(name: str):
+        return vendor_file(name)
 
-    @app.get("/vendor/styles.css")
-    def app_css():
-        return FileResponse(APP_CSS, media_type="text/css", headers={"Cache-Control": "no-cache"})
+    @app.get("/manifest.webmanifest")
+    def manifest():
+        return vendor_file("manifest.webmanifest")
 
     return app
 

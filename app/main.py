@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from app.alerts import AlertTracker
 from app.backup import BackupManager
 from app.cloud_sync import CloudError, CloudSync
+from app.vendor import vendor_file
 from app.config import DATA_DIR, DEFAULTS, Settings
 from app.storage import analytics
 from app.storage.analytics import local_midnight
@@ -215,6 +216,11 @@ async def no_stale_frontend(request: Request, call_next):
 @app.get("/")
 def index():
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/vendor/{name}")
+def vendor(name: str):
+    return vendor_file(name)
 
 
 @app.get("/video")

@@ -64,7 +64,7 @@ Una persona cuenta cuando pasa de un lado al otro **dentro del largo del segment
 1. Pulsa **Dibujar zona**.
 2. Haz clic en cada vértice del polígono.
 3. Cierra con **doble clic** o **clic derecho** y escribe el nombre (por ejemplo "TV y audio" o "Caja").
-4. Para renombrar o borrar zonas, ve a **Configuración → Línea y zonas**. `Esc` cancela un dibujo.
+4. Para renombrar o borrar zonas, ve a **Ajustes → Conteo y cajas**. `Esc` cancela un dibujo.
 
 ### Analítica
 - Rango: **Hoy**, **Última hora** o **Personalizado**. Intervalo de 5, 15 o 60 minutos.
@@ -74,7 +74,7 @@ Una persona cuenta cuando pasa de un lado al otro **dentro del largo del segment
 - Mapa de calor acumulado del rango, sobre el cuadro de referencia de la cámara.
 - **Exportar CSV**: separado por `;` y con coma decimal, para abrirlo directo en Excel en español.
 
-### Configuración
+### Ajustes
 Cámara (buscar índices 0–5, **Probar**, **Usar esta cámara**), resolución, detector (preciso o rápido), confianza,
 duración del rastro (1–10 s), punto de seguimiento (**centro** o **base** = pies, lo correcto con una
 cámara cenital en tienda), duración mínima para contar a una persona, espera de un track perdido, vida
@@ -104,7 +104,7 @@ siendo la "principal" (línea y zonas sobre su imagen) y las demás se suman.
 4. Atajos: Supr borra, Ctrl+Z / Ctrl+Y deshacer y rehacer, Ctrl+D duplica, flechas mueven (Mayús = 1 m),
    rueda del mouse = zoom, arrastrar el fondo = desplazar. Se guarda solo.
 
-### Paso 2 · Agregar las cámaras (Configuración → **Cámaras de la tienda**)
+### Paso 2 · Agregar las cámaras (Ajustes → **Cámaras**)
 - **Webcam USB** (índice 0, 1…), **CCTV/IP por RTSP** o **video** de prueba. Ejemplos de RTSP (usa el
   *substream*, de baja resolución, que alcanza para contar y consume mucho menos CPU):
   - Hikvision: `rtsp://usuario:clave@IP:554/Streaming/Channels/102`
@@ -144,7 +144,7 @@ La calibración convierte "pies de la persona en la imagen" en "posición en met
   detecta solo, y si queda al revés, marca "Invertir lado interior". Los cruces se cuentan en el plano
   (hace falta que una cámara calibrada vea la puerta) y solo cuando la persona ya está confirmada.
 - **Zona de cajas**: un área del plano con tipo "Zona de cajas". Quien **acumule ahí 20 s** (configurable
-  en Configuración; se suman todas sus visitas a cajas) cuenta como **pasó por caja**. En En vivo y en
+  en Ajustes; se suman todas sus visitas a cajas) cuenta como **pasó por caja**. En En vivo y en
   Tienda 3D se marca como "Pasó por caja".
 - Pestaña **Pasaron por caja**: % que pasó por caja; **pasaron por caja**, **no pasaron** (solo transitaron) y
   **total**, con personas, % del total, permanencia promedio y mediana, áreas distintas visitadas, % que
@@ -240,7 +240,7 @@ caminata de prueba antes de presentar números, y considera excluir al personal 
 ### Rendimiento con varias cámaras en esta PC
 Cada cámara usa su propio detector (~85 ms por cuadro con el detector preciso en un Xeon de 4 núcleos;
 ~45 ms con el rápido). Con 2–3 cámaras por PC conviene limitar cada una a 5–8 FPS, o pasar al detector
-rápido en Configuración. Para más, la arquitectura permite repartir las cámaras en
+rápido en Ajustes. Para más, la arquitectura permite repartir las cámaras en
 varios equipos (un mini PC cada 4–6 cámaras) o usar un equipo con GPU.
 ### Trabajar en la nube (sesiones de Claude)
 El código vive en GitHub y se puede programar desde una sesión de Claude en la nube. La nube **no tiene
@@ -252,17 +252,17 @@ prueba. El video en vivo y la calibración se prueban en la PC de la tienda.
   solo si cambió `requirements.txt`.
 
 ### Salud de cámaras, alertas y copias de seguridad
-- **Salud de cada cámara** (Configuración → Cámaras de la tienda): *sin señal*, *tapada u oscura* (sin contraste
+- **Salud de cada cámara** (Ajustes → Cámaras): *sin señal*, *tapada u oscura* (sin contraste
   ni bordes durante 10 s) o *se movió* (los bordes fijos de la escena ya no coinciden con su referencia durante
   30 s; la referencia, solo bordes, se guarda en `datos/camaras/`). Tras recolocar una cámara a propósito,
   "Aceptar posición" (y recalibrarla si cuenta en el plano).
-- **Alertas** (Configuración → General): aforo máximo y fila larga en caja (0 = desactivadas), más las cámaras
+- **Alertas** (Ajustes → Alertas): aforo máximo y fila larga en caja (0 = desactivadas), más las cámaras
   con problemas. Se ven arriba del panel y viajan a la sede principal, que guarda su historial.
 - **Copias de seguridad**: una al día de cada base, en `datos/copias/` (7 diarias y 4 semanales), con una
   carpeta extra opcional (otro disco, OneDrive o Google Drive).
 
 ### Multisede: conectar la tienda con la sede principal
-Configuración → **Sede principal**: pega la dirección del servidor central y la **clave de la sede** (empieza por
+Ajustes → **Sede principal**: pega la dirección del servidor central y la **clave de la sede** (empieza por
 `tqs_`) que te da el administrador al activar la sede. Desde ese momento la app envía cada 30 s sus números
 (personas, puertas, áreas, ocupación y mapa de calor del plano) al servidor, donde gerencia y marketing ven
 todas las sedes juntas. Nunca se envía video ni imágenes. Sin internet la tienda sigue funcionando igual y
@@ -326,7 +326,7 @@ El detector es **D-FINE** (licencia **Apache-2.0**, se puede vender), exportado 
 al 68 %: por eso la confianza mínima por defecto es 0,65.
 
 Si los FPS bajan de 8: (1) limita los FPS máx. de cada cámara a 5–8; (2) usa 640×480 o el substream;
-(3) cambia al detector rápido en Configuración; (4) cierra otras apps que usen CPU.
+(3) cambia al detector rápido en Ajustes; (4) cierra otras apps que usen CPU.
 
 ## 7. Probar otros detectores
 
@@ -463,7 +463,7 @@ IDs globales, descriptor de ropa, áreas del plano con cámaras asignadas, recor
 
 | Síntoma | Qué hacer |
 |---|---|
-| "Cámara desconectada, reintentando…" | Revisa el USB o cierra Zoom, Teams o la app Cámara, que bloquean la webcam. Se reintenta cada 3 s. En Configuración puedes elegir otra cámara. |
+| "Cámara desconectada, reintentando…" | Revisa el USB o cierra Zoom, Teams o la app Cámara, que bloquean la webcam. Se reintenta cada 3 s. En Ajustes puedes elegir otra cámara. |
 | "No se encontró Python 3.11 ni 3.12" | Instala Python (paso 1) y vuelve a abrir `run.bat`. |
 | La instalación falla | Revisa la conexión (solo se necesita la primera vez). Si persiste, borra `.venv` y reintenta. |
 | "La ruta de esta carpeta es muy larga" | Mueve la carpeta a `C:\traffiqui-vision`, borra `.venv` y vuelve a ejecutar `run.bat`. |

@@ -108,12 +108,12 @@
       const sw = s.id in cmap ? `<span class="swatch" style="background:var(--series-${cmap[s.id] + 1})"></span>` : '';
       return `<tr>
         <td class="site-name">${sw}<a href="/sede/${s.id}">${esc(s.name)}</a></td>
-        <td><span class="state ${state[0]}">${state[1]}${since}</span></td>
-        <td class="num"><b>${num(s.visits)}</b></td><td class="num">${delta(s.compare?.week?.visits)}</td>
-        <td class="num">${delta(s.compare?.month?.visits)}</td><td class="num">${num(s.checkout)}</td>
-        <td class="num">${s.visits ? pct(s.checkout_rate) : '–'}</td><td class="num">${secs(s.avg_dwell)}</td>
-        <td class="num">${slot(s.peak_hour)}</td><td class="num">${num(s.entries)}</td><td class="num">${num(s.max_occupancy)}</td></tr>`;
-    }).join('') : '<tr><td colspan="11" class="empty">Todavía no hay sedes. Créalas en <a href="/sedes">Sedes y usuarios</a>.</td></tr>';
+        <td data-label="Estado"><span class="state ${state[0]}">${state[1]}${since}</span></td>
+        <td class="num" data-label="Visitas"><b>${num(s.visits)}</b></td><td class="num" data-label="vs semana anterior">${delta(s.compare?.week?.visits)}</td>
+        <td class="num opt" data-label="vs mes pasado">${delta(s.compare?.month?.visits)}</td><td class="num" data-label="Pasaron por caja">${num(s.checkout)}</td>
+        <td class="num opt" data-label="% que pasó por caja">${s.visits ? pct(s.checkout_rate) : '–'}</td><td class="num" data-label="Tiempo promedio">${secs(s.avg_dwell)}</td>
+        <td class="num" data-label="Hora punta">${slot(s.peak_hour)}</td><td class="num opt" data-label="Entradas (puertas)">${num(s.entries)}</td><td class="num opt" data-label="Máx. a la vez">${num(s.max_occupancy)}</td></tr>`;
+    }).join('') : '<tr><td colspan="11" class="empty">Todavía no hay sedes. Créalas en <a href="/sedes">Administrar</a>.</td></tr>';
     drawCharts(d, cmap);
   }
 
