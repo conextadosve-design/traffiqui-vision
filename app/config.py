@@ -29,8 +29,9 @@ DEFAULTS: dict = {
     "width": 640,
     "height": 480,
     # detección / tracking
-    "imgsz": 480,
-    "confidence": 0.45,
+    "imgsz": 480,          # sin uso desde el detector ONNX (tamaño fijo del modelo); se conserva por compatibilidad
+    "detector": "preciso",  # "preciso" (D-FINE-S) | "rapido" (D-FINE-N)
+    "confidence": 0.65,   # D-FINE: misma precisión que YOLO11n a 0,45 (0,92) con un 12 % más de personas encontradas
     "lost_track_seconds": 2.0,
     "min_track_seconds": 1.0,
     # rastros
@@ -44,6 +45,9 @@ DEFAULTS: dict = {
     "buyer_seconds": 20.0,  # segundos en zonas de cajas para contar como "pasó por caja"
     "staff_hours": 4.0,     # quien supere estas horas en el sistema es personal (0 = desactivado)
     "staff_zone_seconds": 15.0,  # segundos en una "zona de personal" para marcar a alguien como personal
+    # alertas (0 = desactivada)
+    "alert_capacity": 0,       # aforo: más personas que esto a la vez
+    "alert_queue_people": 0,   # fila: esta cantidad de personas o más en una caja durante 1 min
     # mapa de calor
     "heatmap_mode": "live",  # "live" (decae) | "accum"
     "heatmap_half_life": 30.0,

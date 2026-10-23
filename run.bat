@@ -61,16 +61,16 @@ set "VPY=.venv\Scripts\python.exe"
 rem ---- 3. Dependencias (solo si requirements.txt cambio; asi arranca sin internet) ----
 fc /b requirements.txt ".venv\requirements.installed" >nul 2>nul
 if errorlevel 1 (
-  echo Instalando dependencias. La primera vez descarga ~1 GB y tarda varios minutos...
+  echo Instalando dependencias. La primera vez descarga ~200 MB y tarda unos minutos...
   "%VPY%" -m pip install --disable-pip-version-check -q --upgrade pip
   "%VPY%" -m pip install --disable-pip-version-check -r requirements.txt || goto :fail
   copy /y requirements.txt ".venv\requirements.installed" >nul
 )
 
-rem ---- 4. Modelo YOLO11n (se descarga una sola vez) ------------------------
-if not exist "models\yolo11n.pt" (
-  echo Descargando el modelo yolo11n.pt ...
-  "%VPY%" -c "from app.vision.model import ensure_model; ensure_model()" || goto :fail
+rem ---- 4. Modelo de deteccion: viene en models\ (detector-personas.onnx) ---
+if not exist "models\detector-personas.onnx" (
+  echo [ERROR] Falta models\detector-personas.onnx. Vuelve a descargar el proyecto completo.
+  goto :fail
 )
 
 if /i "%~1"=="--setup" (

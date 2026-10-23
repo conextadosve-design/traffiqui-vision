@@ -7,10 +7,8 @@ cd "$(dirname "$0")/.."
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --quiet --upgrade pip
-# PyTorch solo-CPU (la versión por defecto de Linux trae CUDA y pesa varios GB)
-python -m pip install --quiet torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cpu
-# el resto de requirements.txt; OpenCV "headless" porque en la nube no hay pantalla (evita depender de libGL)
-grep -v -E '^(torch|torchvision|opencv-python)==' requirements.txt > /tmp/requirements-cloud.txt
+# OpenCV "headless" porque en la nube no hay pantalla (evita depender de libGL)
+grep -v -E '^opencv-python==' requirements.txt > /tmp/requirements-cloud.txt
 python -m pip install --quiet -r /tmp/requirements-cloud.txt opencv-python-headless==5.0.0.93
 # servidor central de la multisede (cloud/)
 python -m pip install --quiet -r cloud/requirements.txt

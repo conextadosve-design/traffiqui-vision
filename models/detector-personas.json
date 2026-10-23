@@ -1,0 +1,10 @@
+{
+  "name": "D-FINE-S 512",
+  "source": "https://huggingface.co/ustc-community/dfine-small-coco",
+  "license": "apache-2.0",
+  "input_size": 512,
+  "person_index": 0,
+  "normalize": false,
+  "paper": "D-FINE: Redefine Regression Task of DETRs as Fine-grained Distribution Refinement (Peng et al., 2024)",
+  "coco_person_ap_500img": 0.54
+}

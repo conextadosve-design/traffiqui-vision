@@ -30,6 +30,8 @@ organizations = Table(
     Column("name", String(200), nullable=False),
     Column("timezone", String(64), nullable=False, default=config.DEFAULT_TIMEZONE),
     Column("license_code", Text),   # código firmado por Traffiqui: cuántas sedes puede tener activas
+    Column("recovery_hash", String(64)),   # código de recuperación de la sede principal (hash)
+    Column("settings_json", Text),         # correo saliente (SMTP) y umbrales de alertas
     Column("created_at", Float, nullable=False, default=time.time),
 )
 
@@ -70,6 +72,39 @@ user_sessions = Table(
     Column("user_id", Integer, ForeignKey("users.id"), nullable=False, index=True),
     Column("created_at", Float, nullable=False),
     Column("expires_at", Float, nullable=False),
+)
+
+# intentos fallidos de inicio de sesión, por correo y por IP (clave "email:…" / "ip:…")
+login_attempts = Table(
+    "login_attempts", metadata,
+    Column("key", String(300), primary_key=True),
+    Column("failures", Integer, nullable=False, default=0),
+    Column("window_start", Float, nullable=False),
+    Column("locked_until", Float),
+)
+
+# enlaces de "olvidé mi contraseña" enviados por correo (hash del token, caducan en 1 h)
+password_resets = Table(
+    "password_resets", metadata,
+    Column("token_hash", String(64), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id"), nullable=False),
+    Column("expires_at", Float, nullable=False),
+    Column("used", Integer, nullable=False, default=0),
+)
+
+# alertas de las sedes: abiertas (ended_at NULL) e historial
+ALERT_KINDS = ("aforo", "fila", "camara", "sin_datos")
+alerts = Table(
+    "alerts", metadata,
+    Column("id", Integer, primary_key=True),
+    Column("site_id", Integer, ForeignKey("sites.id"), nullable=False, index=True),
+    Column("kind", String(16), nullable=False),
+    Column("ref", String(100), nullable=False, default=""),   # qué cámara o qué caja, si aplica
+    Column("message", Text, nullable=False),
+    Column("started_at", Float, nullable=False),
+    Column("ended_at", Float),
+    Column("ack_by", String(200)),
+    Column("ack_at", Float),
 )
 
 

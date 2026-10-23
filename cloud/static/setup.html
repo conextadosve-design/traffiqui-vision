@@ -34,6 +34,13 @@
       <p class="login-error" id="setupError" role="alert" hidden></p>
       <button class="btn primary login-btn" type="submit">Crear y entrar</button>
     </form>
+    <div class="card key-box" id="codeBox" hidden>
+      <b>Guarda tu código de recuperación</b>
+      <p class="note">Si un día olvidas la contraseña, con este código pones una nueva. Solo se muestra ahora:
+        anótalo o haz una foto y guárdalo en un lugar seguro.</p>
+      <div class="key-row"><code id="codeValue"></code></div>
+      <p><a class="btn primary login-btn" href="/sedes">Ya lo guardé, continuar</a></p>
+    </div>
   </main>
   <script>
     document.getElementById('setupForm').addEventListener('submit', async ev => {
@@ -46,7 +53,9 @@
           body: JSON.stringify({ empresa: v('empresa'), nombre: v('nombre'), email: v('email'), password: v('password') }) });
         const body = await r.json();
         if (!r.ok) throw new Error(body.detail || 'No se pudo guardar.');
-        location.href = '/sedes';
+        document.getElementById('setupForm').hidden = true;
+        document.getElementById('codeValue').textContent = body.recovery_code;
+        document.getElementById('codeBox').hidden = false;
       } catch (e) { err.textContent = e.message; err.hidden = false; }
     });
   </script>

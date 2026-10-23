@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Traffiqui · Sede</title>
+  <link rel="stylesheet" href="/vendor/styles.css">
+  <link rel="stylesheet" href="/static/cloud.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span>Traffiqui</span> Sede principal <small id="orgName"></small></div>
+    <nav class="tabs" id="nav">
+      <a class="tab" href="/">Resumen</a>
+      <a class="tab" href="/sedes" id="navManage">Sedes y usuarios</a>
+    </nav>
+    <div class="status">
+      <span id="userName"></span>
+      <button class="btn ghost" id="logout">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="site-head">
+      <a class="note" href="/">← Todas las sedes</a>
+      <h1 id="siteName">Sede</h1>
+      <span class="state" id="siteState"></span>
+    </div>
+
+    <!-- ================= EN VIVO ================= -->
+    <h2 class="section-title">En vivo <small id="liveAge"></small></h2>
+    <div class="alert info" id="liveOff" hidden><div><b>Sin datos en vivo.</b>
+      <p id="liveOffText">La tienda no está enviando su estado en vivo. Revisa que Traffiqui esté abierto en ese PC y conectado a Tailscale.</p></div></div>
+    <section class="hq-kpis" id="liveKpis">
+      <div class="kpi"><div class="label">Personas ahora</div><div class="value" id="lNow">–</div><div class="sub" id="lPeak"></div></div>
+      <div class="kpi"><div class="label">Visitas hoy</div><div class="value" id="lToday">–</div><div class="sub">personas distintas</div></div>
+      <div class="kpi in"><div class="label">Pasaron por caja hoy</div><div class="value" id="lCheckout">–</div><div class="sub" id="lCheckoutSub"></div></div>
+      <div class="kpi"><div class="label">Entradas / salidas</div><div class="value" id="lDoors">–</div><div class="sub">desde que abrió Traffiqui</div></div>
+      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="lDwell">–</div><div class="sub" id="lStaff"></div></div>
+    </section>
+    <div class="live-grid">
+      <div class="card">
+        <h3>Plano en vivo <small>cada punto es una persona; las áreas se colorean según cuántas hay dentro</small></h3>
+        <div class="plan-wrap"><svg id="livePlan" class="plan-svg" role="img" aria-label="Plano de la sede con las personas en vivo"></svg></div>
+        <p class="note" id="planNote"></p>
+      </div>
+      <div class="side">
+        <div class="card"><h3>Alertas activas</h3><ul class="alert-list" id="liveAlerts"><li class="empty">Sin alertas.</li></ul></div>
+        <div class="card"><h3>Cámaras</h3><ul class="cam-list" id="liveCams"><li class="empty">–</li></ul></div>
+        <div class="card"><h3>Cajas ahora</h3><ul class="rank-list" id="liveCajas"><li class="empty">–</li></ul></div>
+      </div>
+    </div>
+
+    <!-- ================= ANALÍTICA ================= -->
+    <h2 class="section-title">Analítica</h2>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="Rango">
+        <button data-range="today" aria-pressed="true">Hoy</button>
+        <button data-range="week" aria-pressed="false" title="Últimos 7 días, incluido hoy">Semana</button>
+        <button data-range="month" aria-pressed="false" title="Últimos 30 días, incluido hoy">Mes</button>
+        <button data-range="custom" aria-pressed="false">Personalizado</button>
+      </div>
+      <span class="custom" id="custom" hidden>
+        <input type="date" id="start" aria-label="Desde"> – <input type="date" id="end" aria-label="Hasta">
+      </span>
+      <button class="btn" id="refresh">Actualizar</button>
+    </div>
+    <section class="hq-kpis">
+      <div class="kpi"><div class="label">Visitas</div><div class="value" id="aVisits">–</div><div class="sub cmp" id="aVisitsCmp"></div></div>
+      <div class="kpi in"><div class="label">Pasaron por caja</div><div class="value" id="aCheckout">–</div><div class="sub cmp" id="aCheckoutCmp"></div></div>
+      <div class="kpi"><div class="label">Permanencia promedio</div><div class="value" id="aDwell">–</div><div class="sub cmp" id="aDwellCmp"></div></div>
+      <div class="kpi"><div class="label">Hora punta</div><div class="value" id="aPeak">–</div><div class="sub" id="aPeakSub"></div></div>
+      <div class="kpi"><div class="label">Máximo a la vez</div><div class="value" id="aMax">–</div><div class="sub">personas</div></div>
+    </section>
+    <div class="hq-charts">
+      <div class="card">
+        <h3 id="seriesTitle">Visitas por hora</h3>
+        <div class="chart-box"><canvas id="chSeries" aria-label="Visitas en el tiempo"></canvas></div>
+      </div>
+      <div class="card">
+        <h3>Visitas por hora del día</h3>
+        <div class="chart-box"><canvas id="chHours" aria-label="Visitas por hora del día"></canvas></div>
+      </div>
+    </div>
+    <div class="hq-charts">
+      <div class="card">
+        <h3>Mapa de calor <small>por dónde caminó la gente en el rango</small></h3>
+        <div class="plan-wrap"><svg id="heatPlan" class="plan-svg" role="img" aria-label="Mapa de calor sobre el plano"></svg></div>
+        <p class="note" id="heatNote"></p>
+      </div>
+      <div class="card">
+        <h3>Áreas <small>personas distintas que pasaron</small></h3>
+        <div class="table-scroll"><table>
+          <thead><tr><th>Área</th><th class="num">Personas</th><th class="num">Se detuvieron</th><th class="num">Permanencia prom.</th></tr></thead>
+          <tbody id="areasTable"></tbody></table></div>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="card"><h3>Recorridos frecuentes</h3><ul class="rank-list" id="transList"></ul></div>
+      <div class="card"><h3>Cajas</h3><table><thead><tr><th>Caja</th><th class="num">Personas</th><th class="num">%</th><th class="num">Tiempo prom.</th></tr></thead>
+        <tbody id="cajasTable"></tbody></table></div>
+      <div class="card"><h3>Puertas</h3><table><thead><tr><th>Puerta</th><th class="num">Entradas</th><th class="num">Salidas</th></tr></thead>
+        <tbody id="doorsTable"></tbody></table></div>
+    </div>
+    <p class="note">«Pasaron por caja» = estuvieron el tiempo configurado en la zona de cajas; no es lo mismo que una compra.
+      El personal no cuenta en ninguna cifra. Las comparativas usan el mismo tramo horario: hoy hasta esta hora contra
+      el mismo día de la semana pasada y el mismo día del mes pasado.</p>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <script src="/vendor/chart.umd.min.js"></script>
+  <script src="/static/plan.js"></script>
+  <script src="/static/sede.js"></script>
+</body>
+</html>

@@ -15,10 +15,11 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import delete, insert, select
 from sqlalchemy.engine import Engine
 
-from cloud import config, manage
+from cloud import config, cuentas, live, manage
 from cloud.db import make_engine, organizations, sites, user_sessions, users
 from cloud.ingest import IngestError, ingest
 from cloud.reports import RANGES, org_report, resolve_range
+from cloud.site_reports import site_report
 from cloud.security import new_session_token, sha256, verify_password
 
 STATIC_DIR = Path(__file__).parent / "static"
@@ -32,10 +33,11 @@ STATUS_MSG = {
 }
 
 
-def create_app(engine: Engine | None = None) -> FastAPI:
+def create_app(engine: Engine | None = None, backup=None) -> FastAPI:
     engine = engine or make_engine()
     app = FastAPI(title="Traffiqui Cloud")
     app.state.engine = engine
+    app.state.backup = backup   # app.backup.BackupManager en el PC de la sede principal
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     # ---- usuarios y sesiones ---------------------------------------------------------
@@ -83,11 +85,18 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         body = await request.json()
         email = str(body.get("email", "")).strip().lower()
         password = str(body.get("password", ""))
+        ip = request.client.host if request.client else ""
         with engine.begin() as conn:
+            cuentas.check_locked(conn, email, ip)
             user = conn.execute(select(users).where(users.c.email == email, users.c.active == 1)).mappings().first()
-            if user is None or not verify_password(password, user["password_hash"]):
-                raise HTTPException(401, "Correo o contraseña incorrectos.")
-            set_session(conn, response, user["id"])
+            ok = user is not None and verify_password(password, user["password_hash"])
+            if not ok:
+                cuentas.record_failure(conn, email, ip)
+            else:
+                cuentas.clear_failures(conn, email)
+                set_session(conn, response, user["id"])
+        if not ok:   # fuera de la transacción: el intento fallido queda guardado
+            raise HTTPException(401, "Correo o contraseña incorrectos.")
         return {"ok": True}
 
     @app.post("/api/auth/logout")
@@ -127,6 +136,26 @@ def create_app(engine: Engine | None = None) -> FastAPI:
         rep["org"] = {"id": org["id"], "name": org["name"]}
         return rep
 
+    @app.get("/api/sites/{sid}/report")
+    def one_site_report(sid: int, range: str = "today", start: str | None = None, end: str | None = None,
+                        user: dict = Depends(current_user)):
+        if range not in RANGES:
+            raise HTTPException(400, "Rango no válido.")
+        with engine.connect() as conn:
+            org_id = conn.execute(select(sites.c.org_id).where(sites.c.id == sid)).scalar()
+        org, rows = visible_sites(user, org_id if user["role"] == "admin" else None)
+        site = next((s for s in rows if s["id"] == sid), None)
+        if site is None:
+            raise HTTPException(404, "Sede no encontrada.")
+        try:
+            t0, t1 = resolve_range(range, org["timezone"], start, end)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        with engine.connect() as conn:
+            rep = site_report(conn, site, org["timezone"], t0, t1)
+        rep["site"] = {"id": site["id"], "name": site["name"], "status": site["status"]}
+        return rep
+
     # ---- agente de cada sede ---------------------------------------------------------
     def agent_site(request: Request) -> dict:
         auth = request.headers.get("authorization", "")
@@ -147,6 +176,8 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             if row["id"] not in manage.licensed_site_ids(conn, org):
                 raise HTTPException(403, f"Esta sede no entra en la licencia de la empresa. Contacta con {config.CONTACT}.")
         return dict(row)
+
+    live.register(app, engine, current_user, agent_site, visible_sites)
 
     @app.post("/api/agent/hello")
     def agent_hello(site: dict = Depends(agent_site)):
@@ -170,6 +201,7 @@ def create_app(engine: Engine | None = None) -> FastAPI:
 
     # ---- páginas ---------------------------------------------------------------------
     manage.register(app, engine, current_user, set_session)
+    cuentas.register(app, engine, current_user, set_session)
 
     def page(name: str) -> FileResponse:
         return FileResponse(STATIC_DIR / name, headers={"Cache-Control": "no-cache"})
@@ -186,6 +218,12 @@ def create_app(engine: Engine | None = None) -> FastAPI:
             return RedirectResponse("/login")
         return page("index.html")
 
+    @app.get("/sede/{sid}")
+    def site_page(sid: int, request: Request):
+        if not request.cookies.get(COOKIE):
+            return RedirectResponse("/login")
+        return page("sede.html")
+
     @app.get("/sedes")
     def sites_page(request: Request):
         if not request.cookies.get(COOKIE):
@@ -195,6 +233,14 @@ def create_app(engine: Engine | None = None) -> FastAPI:
     @app.get("/login")
     def login_page():
         return RedirectResponse("/setup") if needs_setup() else page("login.html")
+
+    @app.get("/recuperar")
+    def recover_page():
+        return page("recuperar.html")
+
+    @app.get("/restablecer")
+    def reset_page():
+        return page("recuperar.html")
 
     @app.get("/setup")
     def setup_page():

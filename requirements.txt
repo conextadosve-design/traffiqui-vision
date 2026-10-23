@@ -1,11 +1,10 @@
-# Versiones fijadas (probadas en Windows 11, Python 3.11.9, solo CPU)
-ultralytics==8.4.182
+# Versiones fijadas (probadas en Windows 11, Python 3.11, solo CPU)
+# Sin PyTorch ni Ultralytics: el detector (D-FINE, Apache-2.0) corre en ONNX con onnxruntime.
+onnxruntime==1.31.0
 supervision==0.30.9  # ultima con sv.ByteTrack (0.31 lo movio al paquete "trackers")
 opencv-python==5.0.0.93
 numpy==2.4.6
 pillow==13.0.0
-torch==2.14.1
-torchvision==0.29.1
 fastapi==0.146.0
 starlette==1.9.0
 uvicorn[standard]==0.54.0

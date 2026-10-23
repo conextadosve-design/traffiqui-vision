@@ -69,6 +69,56 @@
         </form>
       </div>
 
+
+      <div class="card" id="backupCard" data-api="/api/manage/backup">
+        <h3>Copias de seguridad</h3>
+        <p class="note">Este PC guarda los datos de todas las sedes. Cada día se hace una copia (las 7 últimas y una
+          por semana del último mes). Elige además una carpeta en otro disco o en OneDrive / Google Drive.</p>
+        <p id="backupInfo">–</p>
+        <form id="backupForm">
+          <div class="field">
+            <label for="backupExtra">Carpeta extra (opcional)</label>
+            <input type="text" id="backupExtra" placeholder="D:\CopiasTraffiqui" autocomplete="off">
+          </div>
+          <div class="row">
+            <button class="btn" type="submit">Guardar carpeta</button>
+            <button class="btn primary" type="button" id="backupNow">Hacer copia ahora</button>
+          </div>
+        </form>
+      </div>
+      <div class="card" id="securityCard">
+        <h3>Seguridad</h3>
+        <form id="myPassForm">
+          <div class="field"><label for="myCur">Tu contraseña actual</label>
+            <input type="password" id="myCur" required autocomplete="current-password"></div>
+          <div class="field"><label for="myNew">Contraseña nueva</label>
+            <input type="password" id="myNew" minlength="8" required autocomplete="new-password"></div>
+          <button class="btn" type="submit">Cambiar mi contraseña</button>
+        </form>
+        <div class="field" style="margin-top:16px">
+          <span class="label">Código de recuperación</span>
+          <span class="help">Sirve para recuperar el acceso de la sede principal si se olvida la contraseña.
+            Si lo perdiste, genera uno nuevo (el anterior deja de valer).</span>
+          <div class="row"><button class="btn" type="button" id="newRecovery">Generar código nuevo</button></div>
+          <div class="key-row" id="recoveryBox" hidden><code id="recoveryValue"></code></div>
+        </div>
+      </div>
+
+      <div class="card" id="smtpCard">
+        <h3>Correo saliente <small>opcional</small></h3>
+        <p class="note">Con el correo configurado, «¿Olvidaste tu contraseña?» envía un enlace. Sirve cualquier cuenta
+          con SMTP (Gmail o Outlook con contraseña de aplicación, o el correo de tu dominio).</p>
+        <p id="smtpState" class="note"></p>
+        <form id="smtpForm" class="inline-form wrap">
+          <input type="text" id="smtpHost" placeholder="Servidor (smtp.gmail.com)">
+          <input type="number" id="smtpPort" placeholder="Puerto (587)">
+          <input type="text" id="smtpUser" placeholder="Usuario" autocomplete="off">
+          <input type="password" id="smtpPass" placeholder="Contraseña" autocomplete="new-password">
+          <input type="text" id="smtpFrom" placeholder="Remitente (opcional)">
+          <button class="btn primary" type="submit">Guardar y enviar prueba</button>
+        </form>
+      </div>
+
       <div class="card wide">
         <h3>Usuarios <small>quién puede entrar a este panel</small></h3>
         <div class="table-scroll">
@@ -94,5 +144,6 @@
 
   <div class="toast" id="toast" role="status" hidden></div>
   <script src="/static/sedes.js"></script>
+  <script src="/static/backup.js"></script>
 </body>
 </html>

@@ -95,7 +95,7 @@ function renderAlerts() {
     items.push(['El servidor no responde.', 'Revisa que la ventana de run.bat siga abierta. Si la cerraste, vuelve a ejecutar run.bat. Reintentando…']);
   } else if (metrics) {
     if (metrics.model_error) {
-      items.push(['No se pudo cargar el modelo de detección.', 'Ejecuta run.bat con internet una vez para descargar yolo11n.pt; después funciona sin conexión.']);
+      items.push(['No se pudo cargar el modelo de detección.', metrics.model_error]);
     }
     if (!metrics.camera_connected) {
       items.push([metrics.camera_error || 'Cámara desconectada.',
@@ -104,6 +104,11 @@ function renderAlerts() {
     for (const c of (metrics.cameras || []).filter(c => !c.primary && c.enabled && c.running && !c.connected)) {
       items.push([`«${c.name}» sin señal.`, c.error || 'Revisa la red, la URL RTSP y el usuario/contraseña de la cámara. Se reintenta cada 3 s.']);
     }
+    for (const c of (metrics.cameras || []).filter(c => c.connected && ['tapada', 'movida'].includes(c.health?.state))) {
+      items.push([`«${c.name}»: ${c.health.state === 'tapada' ? 'imagen tapada o a oscuras' : 'la cámara se movió'}.`,
+        c.health.message + (c.health.state === 'movida' ? ' Configuración → Cámaras de la tienda → «Aceptar posición».' : '')]);
+    }
+    for (const a of (metrics.alerts || [])) items.push([a.title, a.message]);
   }
   $('#alerts').innerHTML = items.map(([t, d]) =>
     `<div class="alert" role="alert"><div><b>${esc(t)}</b><p>${esc(d)}</p></div></div>`).join('');

@@ -82,3 +82,4 @@ textarea { width: 100%; padding: 6px 10px; border-radius: 8px; border: 1px solid
 .login.setup { width: min(460px, 100% - 32px); }
 .login.setup .field input { width: 100%; }
 @media (max-width: 1000px) { .manage-grid { grid-template-columns: minmax(0, 1fr); } }
+.login > .note a { color: var(--brass); }

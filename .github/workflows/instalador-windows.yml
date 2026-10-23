@@ -43,10 +43,8 @@ jobs:
       - name: Pruebas
         run: python -m pytest -q tests
 
-      - name: Modelo e icono
-        run: |
-          python -c "from app.vision.model import ensure_model; print(ensure_model())"
-          python packaging/make_icon.py
+      - name: Icono
+        run: python packaging/make_icon.py
 
       - name: Empaquetar (PyInstaller)
         run: pyinstaller packaging/traffiqui.spec --noconfirm

@@ -116,6 +116,68 @@ def site_summary(conn: Connection, site: dict, t0: float, t1: float, zone: ZoneI
     }
 
 
+# ---- comparativas -------------------------------------------------------------------------
+def shift_month(d: datetime, months: int = -1) -> datetime:
+    """La misma fecha y hora del mes anterior (31 de marzo → 28/29 de febrero)."""
+    y, m = divmod(d.month - 1 + months, 12)
+    y, m = d.year + y, m + 1
+    last = (datetime(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1)).day
+    return d.replace(year=y, month=m, day=min(d.day, last))
+
+
+def comparison_ranges(t0: float, t1: float, tz: str) -> dict[str, tuple[float, float]]:
+    """El mismo tramo hace una semana y el mismo día (o días) del mes pasado, en hora local."""
+    zone = ZoneInfo(tz)
+    a, b = datetime.fromtimestamp(t0, zone), datetime.fromtimestamp(t1, zone)
+    return {"week": ((a - timedelta(days=7)).timestamp(), (b - timedelta(days=7)).timestamp()),
+            "month": (shift_month(a).timestamp(), shift_month(b).timestamp())}
+
+
+def site_totals(conn: Connection, site_id: int, t0: float, t1: float) -> dict:
+    rows = conn.execute(
+        select(global_tracks.c.duration, global_tracks.c.last_seen, global_tracks.c.is_buyer)
+        .where(global_tracks.c.site_id == site_id, global_tracks.c.is_staff == 0,
+               global_tracks.c.first_seen >= t0, global_tracks.c.first_seen < t1)).all()
+    dwell = [r.duration for r in rows if r.duration is not None and r.last_seen is not None]
+    return {"visits": len(rows), "checkout": sum(1 for r in rows if r.is_buyer),
+            "dwell_sum": sum(dwell), "dwell_n": len(dwell)}
+
+
+def pct(cur: float | None, prev: float | None) -> float | None:
+    """Variación en % (None si no hay con qué comparar)."""
+    if cur is None or not prev:
+        return None
+    return round((cur - prev) / prev * 100, 1)
+
+
+def compare_block(cur: dict, prev: dict) -> dict:
+    """cur/prev = {visits, checkout, dwell_sum, dwell_n} → variaciones y valores de antes."""
+    rate = lambda t: t["checkout"] / t["visits"] if t["visits"] else None  # noqa: E731
+    dwell = lambda t: t["dwell_sum"] / t["dwell_n"] if t["dwell_n"] else None  # noqa: E731
+    return {"visits": pct(cur["visits"], prev["visits"]), "checkout": pct(cur["checkout"], prev["checkout"]),
+            "avg_dwell": pct(dwell(cur), dwell(prev)),
+            "checkout_rate_pts": round((rate(cur) - rate(prev)) * 100, 1) if rate(cur) is not None and rate(prev) is not None else None,
+            "prev_visits": prev["visits"]}
+
+
+def comparisons(conn: Connection, site_ids: list[int], t0: float, t1: float, tz: str) -> dict:
+    """Para cada sede y para el total: variación contra la semana anterior y el mes pasado."""
+    keys = ("visits", "checkout", "dwell_sum", "dwell_n")
+    add = lambda a, b: {k: a[k] + b[k] for k in keys}  # noqa: E731
+    zero = {k: 0 for k in keys}
+    cur = {sid: site_totals(conn, sid, t0, t1) for sid in site_ids}
+    out = {"total": {}, "sites": {sid: {} for sid in site_ids}}
+    for name, (p0, p1) in comparison_ranges(t0, t1, tz).items():
+        prev = {sid: site_totals(conn, sid, p0, p1) for sid in site_ids}
+        for sid in site_ids:
+            out["sites"][sid][name] = compare_block(cur[sid], prev[sid])
+        tot_c, tot_p = zero, zero
+        for sid in site_ids:
+            tot_c, tot_p = add(tot_c, cur[sid]), add(tot_p, prev[sid])
+        out["total"][name] = compare_block(tot_c, tot_p) | {"range": [p0, p1]}
+    return out
+
+
 def org_report(conn: Connection, site_rows: list[dict], tz: str, t0: float, t1: float) -> dict:
     zone = ZoneInfo(tz)
     unit, buckets = _buckets(t0, t1, zone)
@@ -132,8 +194,12 @@ def org_report(conn: Connection, site_rows: list[dict], tz: str, t0: float, t1: 
         if s["avg_dwell"] is not None:
             weighted["sum"] += s["avg_dwell"] * s["visits"]
             weighted["n"] += s["visits"]
+    cmp = comparisons(conn, [s["id"] for s in per_site], t0, t1, tz)
+    for s in per_site:
+        s["compare"] = cmp["sites"][s["id"]]
     return {
         "range": {"start": t0, "end": t1, "unit": unit, "timezone": tz},
+        "compare": cmp["total"],
         "labels": [_label(b, unit) for b in buckets],
         "totals": {
             "visits": visits,
