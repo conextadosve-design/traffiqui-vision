@@ -634,3 +634,9 @@ table.peaks tbody tr:hover, table.peaks tbody tr.sel { background: var(--surface
   .cam-add .grow, .cam-add input[type="text"] { min-width: 0; flex: 1 1 100%; }
   .s3d-legend { min-width: 0; }
 }
+
+/* botones de valores rápidos bajo un deslizador */
+.presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.presets .chip-btn { padding: 5px 12px; font-size: 13px; font-weight: 600; }
+.presets .chip-btn.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+@media (prefers-color-scheme: dark) { .presets .chip-btn.on { background: var(--brass); border-color: var(--brass); color: var(--ink); } }

@@ -41,3 +41,10 @@ def test_settings_ignora_claves_desconocidas_y_versiona():
     v = s.version
     s.update({"trail_seconds": 7, "otra": 1})
     assert s.get("trail_seconds") == 7 and "otra" not in s.snapshot() and s.version == v + 1
+
+
+def test_memoria_de_reentrada_ajustable_hasta_30_min():
+    assert Settings().get("reid_reentry_s") == 300
+    for v in (0, 20, 300, 1800):
+        assert validate_config({"reid_reentry_s": v}) is None
+    assert "memoria" in validate_config({"reid_reentry_s": 1801}).lower()
