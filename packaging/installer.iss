@@ -36,6 +36,10 @@ Name: "autostart"; Description: "Abrir Traffiqui al encender el PC (recomendado)
 ; los datos quedan fuera de la carpeta del programa: actualizar o desinstalar no los borra
 Name: "{commonappdata}\Traffiqui"; Permissions: users-modify
 
+[InstallDelete]
+; al reinstalar o actualizar: fuera el código anterior (los datos están en ProgramData y no se tocan)
+Type: filesandordirs; Name: "{app}\codigo"
+
 [Files]
 Source: "..\dist\Traffiqui\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

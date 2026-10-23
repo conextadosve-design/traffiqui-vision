@@ -2,7 +2,9 @@
 # - A mano: pestaña Actions → "Instalador de Windows" → Run workflow.
 # - Al crear una etiqueta v1.2.3: además lo publica como Release.
 # - Al cambiar algo de packaging/ o de este archivo: para comprobar que el empaquetado sigue funcionando.
-# El instalador queda en la ejecución, sección "Artifacts".
+# Genera dos archivos (sección "Artifacts" de la ejecución):
+#   Traffiqui-Setup-x.y.z.exe          instalador completo (base + código), para instalar por primera vez
+#   Traffiqui-Actualizacion-x.y.z.exe  solo el código (pocos MB), para actualizar un PC que ya lo tiene
 name: Instalador de Windows
 
 on:
@@ -46,8 +48,10 @@ jobs:
       - name: Icono
         run: python packaging/make_icon.py
 
-      - name: Empaquetar (PyInstaller)
-        run: pyinstaller packaging/traffiqui.spec --noconfirm
+      - name: Empaquetar la base (PyInstaller) y copiar el código
+        run: |
+          pyinstaller packaging/traffiqui.spec --noconfirm
+          python packaging/preparar_codigo.py --version ${{ steps.ver.outputs.version }}
 
       - name: Prueba de humo del .exe (sede principal y tienda)
         shell: pwsh
@@ -76,7 +80,10 @@ jobs:
             if (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") { $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6" }
             else { choco install innosetup -y --no-progress; $env:PATH += ";${env:ProgramFiles(x86)}\Inno Setup 6" }
           }
+          $base = (Get-Content packaging\BASE_VERSION).Trim()
           iscc packaging\installer.iss /DAppVersion=${{ steps.ver.outputs.version }}
+          iscc packaging\actualizacion.iss /DAppVersion=${{ steps.ver.outputs.version }} /DBaseVersion=$base
+          Get-ChildItem dist\*.exe | ForEach-Object { "{0}: {1:N1} MB" -f $_.Name, ($_.Length / 1MB) }
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,9 +91,15 @@ jobs:
           path: dist/Traffiqui-Setup-*.exe
           retention-days: 30
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Traffiqui-Actualizacion-${{ steps.ver.outputs.version }}
+          path: dist/Traffiqui-Actualizacion-*.exe
+          retention-days: 30
+
       - name: Publicar Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
-        run: gh release create "$GITHUB_REF_NAME" dist/Traffiqui-Setup-*.exe --title "Traffiqui $GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/Traffiqui-Setup-*.exe dist/Traffiqui-Actualizacion-*.exe --title "Traffiqui $GITHUB_REF_NAME" --generate-notes

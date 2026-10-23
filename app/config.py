@@ -8,7 +8,8 @@ import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MODELS_DIR = ROOT / "models"
+# instalado: los modelos son parte de la base (junto al ejecutable), no del código que se actualiza
+MODELS_DIR = Path(getattr(sys, "_MEIPASS", "")) / "models" if getattr(sys, "frozen", False) else ROOT / "models"
 
 
 def _data_dir() -> Path:
