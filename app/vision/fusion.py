@@ -9,6 +9,8 @@ se decide cuándo un track local nuevo es una persona que ya conocemos:
      a una distancia alcanzable caminando (≤ velocidad máx. × tiempo + holgura),
      con apariencia parecida.
   3. Re-entrada en la misma cámara: salió y volvió en menos de `reentry_s`.
+     Si reaparece casi en el mismo sitio en menos de `quick_reentry_s` (el detector la perdió un
+     momento: se giró, se tapó la cara, movió la cámara), basta un parecido de ropa menor.
 
 La apariencia es un histograma de color HSV de la mitad superior e inferior
 del cuerpo (ropa), no la cara. Vive solo en memoria y se descarta cuando el
@@ -111,11 +113,13 @@ class GlobalTracker:
     def __init__(self, same_place_m: float = 0.9, handoff_s: float = 8.0, reentry_s: float = 20.0,
                  max_speed: float = 2.0, slack_m: float = 1.0, min_app_sim: float = 0.6,
                  min_app_sim_no_space: float = 0.72, ambiguity_margin: float = 0.06,
-                 live_after_s: float = 1.0, min_confirm_s: float = 1.0):
+                 live_after_s: float = 1.0, min_confirm_s: float = 1.0,
+                 quick_reentry_s: float = 5.0, min_app_sim_quick: float = 0.5):
         self.same_place_m, self.handoff_s, self.reentry_s = same_place_m, handoff_s, reentry_s
         self.max_speed, self.slack_m = max_speed, slack_m
         self.min_app_sim, self.min_app_sim_no_space = min_app_sim, min_app_sim_no_space
         self.ambiguity_margin, self.live_after_s, self.min_confirm_s = ambiguity_margin, live_after_s, min_confirm_s
+        self.quick_reentry_s, self.min_app_sim_quick = quick_reentry_s, min_app_sim_quick
         self.globals: dict[int, GlobalTrack] = {}
         self.links: dict[tuple[str, int], int] = {}        # (cámara, track local) -> gid
         self.link_seen: dict[tuple[str, int], float] = {}  # última vez que se vio ese track local
@@ -163,12 +167,15 @@ class GlobalTracker:
             elif same_cam and obs.camera_id in g.img_pos:
                 d = math.dist(obs.img_pos, g.img_pos[obs.camera_id])
                 spatial = max(0.0, 1 - d / 0.6)
+            quick = same_cam and spatial is not None and spatial > 0.75 and dt <= self.quick_reentry_s
             if app is None:
                 # sin apariencia solo se acepta una re-entrada inmediata y muy cercana
-                if spatial is not None and spatial > 0.7 and dt <= 2.0:
+                if quick:
                     out.append((spatial * 0.8, g.gid, "re-entrada" if same_cam else "traspaso"))
                 continue
             needed = self.min_app_sim if (spatial is not None and obs.plan_pos is not None) else self.min_app_sim_no_space
+            if quick:
+                needed = min(needed, self.min_app_sim_quick)
             if app < needed:
                 continue
             sp = spatial if spatial is not None else 0.3

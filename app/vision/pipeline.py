@@ -32,6 +32,7 @@ BRASS = (38, 165, 224)    # #E0A526
 ALERT = (45, 65, 194)     # #C2412D
 JPEG_QUALITY = 80
 INITIAL_FPS_GUESS = 10.0
+TRACK_LOW_CONF = 0.1    # piso de las detecciones que se pasan a ByteTrack para sostener tracks (su segunda pasada)
 
 
 @dataclass
@@ -189,11 +190,14 @@ class PipelineThread(threading.Thread):
     def _process(self, frame: np.ndarray, cfg: dict, now: float) -> np.ndarray:
         self.frame_shape = frame.shape[:2]
         t0 = time.perf_counter()
-        found = self.model.detect(frame, conf=cfg["confidence"])
+        # ByteTrack necesita también las detecciones dudosas (entre TRACK_LOW_CONF y la confianza mínima):
+        # no crean personas nuevas, pero sostienen a alguien ya seguido cuando su puntuación baja un
+        # momento (de cerca, de lado, movido, tapado a medias). Sin ellas, cada bajón era un ID nuevo.
+        found = self.model.detect(frame, conf=min(TRACK_LOW_CONF, cfg["confidence"]))
         self.infer_ms = (time.perf_counter() - t0) * 1000
         raw = sv.Detections(xyxy=found.xyxy, confidence=found.confidence,
                             class_id=np.zeros(len(found.confidence), dtype=int))
-        raw_boxes = [tuple(int(v) for v in b) for b in raw.xyxy]
+        raw_boxes = [tuple(int(v) for v in b) for b, c in zip(raw.xyxy, raw.confidence) if c >= cfg["confidence"]]
         dets = self._ensure_tracker(cfg).update_with_detections(raw)
 
         visible = []
